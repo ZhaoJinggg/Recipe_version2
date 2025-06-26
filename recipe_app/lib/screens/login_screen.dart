@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:video_player/video_player.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -69,16 +71,222 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         _isLoading = true;
       });
 
-      // Simulate login API call
-      await Future.delayed(const Duration(milliseconds: 1500));
+      try {
+        // Attempt Firebase Authentication login
+        print(
+            '🔐 Attempting Firebase Auth login with email: ${_emailController.text}');
+        final success = await UserSessionService.loginUser(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
 
-      // In a real app, you would verify credentials here
-      // For demo purposes, any valid email and password combination works
-      if (mounted) {
-        // Navigate to home screen after successful login
-        Navigator.pushReplacementNamed(context, '/');
+        if (success) {
+          print('✅ Login successful');
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 8),
+                    const Text('Welcome back!'),
+                  ],
+                ),
+                backgroundColor: Colors.green[600],
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            );
+
+            // Navigate to home screen after successful login
+            Navigator.pushReplacementNamed(context, '/');
+          }
+        } else {
+          // Login failed - show generic error
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.error, color: Colors.white),
+                    const SizedBox(width: 8),
+                    const Text('Login failed. Please check your credentials.'),
+                  ],
+                ),
+                backgroundColor: Colors.red[600],
+                duration: const Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            );
+          }
+        }
+      } on FirebaseAuthException catch (e) {
+        print('❌ Firebase Auth error: ${e.code} - ${e.message}');
+
+        // Show user-friendly error message
+        final errorMessage = UserSessionService.getAuthErrorMessage(e);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(errorMessage)),
+                ],
+              ),
+              backgroundColor: Colors.red[600],
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        print('❌ Login error: $e');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child:
+                        Text('An unexpected error occurred. Please try again.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red[600],
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
+  }
+
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+                'Enter your email address to receive password reset instructions.'),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                hintText: 'Enter your email',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isNotEmpty) {
+                Navigator.pop(context);
+
+                try {
+                  final success =
+                      await UserSessionService.sendPasswordResetEmail(email);
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(
+                              success ? Icons.check_circle : Icons.error,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                success
+                                    ? 'Password reset email sent! Check your inbox.'
+                                    : 'Failed to send reset email. Please try again.',
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor:
+                            success ? Colors.green[600] : Colors.red[600],
+                        duration: const Duration(seconds: 4),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.error, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text('Error: ${e.toString()}'),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: Colors.red[600],
+                        duration: const Duration(seconds: 4),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Send Reset Email'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -370,16 +578,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  onPressed: () {
-                                    // Show reset password dialog/screen
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Password reset functionality coming soon!'),
-                                        backgroundColor: AppColors.primary,
-                                      ),
-                                    );
-                                  },
+                                  onPressed: _showForgotPasswordDialog,
                                 ),
                               ],
                             ),

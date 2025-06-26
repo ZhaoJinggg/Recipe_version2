@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;

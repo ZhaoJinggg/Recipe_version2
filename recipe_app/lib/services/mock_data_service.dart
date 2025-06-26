@@ -448,7 +448,7 @@ class MockDataService {
       createdAt: DateTime.now().subtract(const Duration(hours: 5)),
       likes: 18,
       comments: [
-        Comment(
+        PostComment(
           id: 'comment1',
           userId: 'user3',
           userName: 'Chef Sophia',

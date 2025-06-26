@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/models/post.dart';
+import 'package:recipe_app/models/user.dart';
 import 'package:recipe_app/services/mock_data_service.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -118,11 +120,50 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundImage: NetworkImage(
-              MockDataService.getCurrentUser().profileImageUrl ??
-                  'https://via.placeholder.com/150',
-            ),
+            backgroundColor: AppColors.primary.withOpacity(0.2),
             radius: 20,
+            child: () {
+              final user = UserSessionService.getCurrentUser();
+              if (user?.profileImageUrl != null) {
+                if (user!.profileImageUrl!.startsWith('assets/')) {
+                  return ClipOval(
+                    child: Image.asset(
+                      user.profileImageUrl!,
+                      fit: BoxFit.cover,
+                      width: 40,
+                      height: 40,
+                    ),
+                  );
+                } else {
+                  return ClipOval(
+                    child: Image.network(
+                      user.profileImageUrl!,
+                      fit: BoxFit.cover,
+                      width: 40,
+                      height: 40,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Text(
+                          user.name[0].toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }
+              }
+              return Text(
+                user?.name[0].toUpperCase() ?? 'G',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              );
+            }(),
           ),
           const SizedBox(width: 16),
           Expanded(

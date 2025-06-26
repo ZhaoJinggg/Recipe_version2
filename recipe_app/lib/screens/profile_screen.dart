@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
-import 'package:recipe_app/services/mock_data_service.dart';
+import 'package:recipe_app/services/user_session_service.dart';
+import 'package:recipe_app/models/user.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -13,10 +14,130 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final int _currentNavIndex = 4; // Profile tab
+  User? _currentUser;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = UserSessionService.getCurrentUser();
+      if (user != null) {
+        setState(() {
+          _currentUser = user;
+          _isLoading = false;
+        });
+      } else {
+        // No user logged in, redirect to login
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading user profile: $e');
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = MockDataService.getCurrentUser();
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          title: const Text(
+            'My Profile',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+          ),
+        ),
+      );
+    }
+
+    if (_currentUser == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          title: const Text(
+            'My Profile',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.person_off,
+                size: 80,
+                color: AppColors.textPrimary.withOpacity(0.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No user logged in',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: AppColors.textPrimary.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, '/login');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Go to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -49,7 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     await Navigator.pushNamed(context, '/edit-profile');
                 if (result == true) {
                   // Refresh the profile screen to show updated data
-                  setState(() {});
+                  _loadUserProfile();
                 }
               },
             ),
@@ -84,16 +205,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 child: ClipOval(
-                  child: user.profileImageUrl != null
-                      ? (user.profileImageUrl!.startsWith('assets/')
+                  child: _currentUser!.profileImageUrl != null
+                      ? (_currentUser!.profileImageUrl!.startsWith('assets/')
                           ? Image.asset(
-                              user.profileImageUrl!,
+                              _currentUser!.profileImageUrl!,
                               fit: BoxFit.cover,
                               width: 140,
                               height: 140,
                             )
                           : Image.file(
-                              File(user.profileImageUrl!),
+                              File(_currentUser!.profileImageUrl!),
                               fit: BoxFit.cover,
                               width: 140,
                               height: 140,
@@ -101,7 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 // Fallback to initial if file doesn't exist
                                 return Center(
                                   child: Text(
-                                    user.name[0].toUpperCase(),
+                                    _currentUser!.name[0].toUpperCase(),
                                     style: const TextStyle(
                                       fontSize: 60,
                                       fontWeight: FontWeight.bold,
@@ -113,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ))
                       : Center(
                           child: Text(
-                            user.name[0].toUpperCase(),
+                            _currentUser!.name[0].toUpperCase(),
                             style: const TextStyle(
                               fontSize: 60,
                               fontWeight: FontWeight.bold,
@@ -126,13 +247,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // Name
+              // Name and User ID
               Text(
-                user.name,
+                _currentUser!.name,
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Show user ID for verification
+              Text(
+                'User ID: ${_currentUser!.id}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textPrimary.withOpacity(0.5),
+                  fontFamily: 'monospace',
                 ),
               ),
 
@@ -186,12 +319,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                           const SizedBox(height: 20),
-                          _buildInfoRow('Gender',
-                              user.gender ?? 'Not specified', Icons.female),
+                          _buildInfoRow(
+                              'Gender',
+                              _currentUser!.gender ?? 'Not specified',
+                              Icons.female),
                           const SizedBox(height: 16),
                           _buildInfoRow(
                               'Date of Birth',
-                              user.dateOfBirth ?? 'Not specified',
+                              _currentUser!.dateOfBirth ?? 'Not specified',
                               Icons.cake_outlined),
                         ],
                       ),
@@ -242,11 +377,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                           const SizedBox(height: 20),
-                          _buildInfoRow('Phone', user.phone ?? 'Not specified',
+                          _buildInfoRow(
+                              'Phone',
+                              _currentUser!.phone ?? 'Not specified',
                               Icons.phone_outlined),
                           const SizedBox(height: 16),
-                          _buildInfoRow(
-                              'Email', user.email, Icons.email_outlined),
+                          _buildInfoRow('Email', _currentUser!.email,
+                              Icons.email_outlined),
                         ],
                       ),
                     ),
@@ -297,7 +434,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            user.bio ?? 'No bio available',
+                            _currentUser!.bio ?? 'No bio available',
                             style: TextStyle(
                               fontSize: 16,
                               color: AppColors.textPrimary.withOpacity(0.8),
@@ -327,10 +464,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
-                                  onPressed: () {
+                                  onPressed: () async {
                                     Navigator.pop(context);
-                                    Navigator.pushReplacementNamed(
-                                        context, '/login');
+
+                                    // Properly logout using UserSessionService
+                                    await UserSessionService.logoutUser();
+
+                                    if (mounted) {
+                                      Navigator.pushReplacementNamed(
+                                          context, '/login');
+                                    }
                                   },
                                   child: const Text(
                                     'Logout',

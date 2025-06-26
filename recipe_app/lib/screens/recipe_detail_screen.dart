@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/models/recipe.dart';
 import 'package:recipe_app/models/comment.dart';
+import 'package:recipe_app/models/grocery_item.dart';
 import 'package:recipe_app/services/mock_data_service.dart';
+import 'package:recipe_app/services/firebase_service.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 import 'package:recipe_app/widgets/recipe_nutrition_widget.dart';
 import 'package:recipe_app/widgets/recipe_ingredients_widget.dart';
 import 'package:recipe_app/widgets/recipe_directions_widget.dart';
@@ -22,7 +25,8 @@ class RecipeDetailScreen extends StatefulWidget {
 
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   late Recipe? _recipe;
-  //final bool _isFavorite = false;
+  bool _isFavorite = false;
+  bool _isLoading = false;
   int _currentImageIndex = 0;
   final TextEditingController _commentController = TextEditingController();
 
@@ -35,17 +39,23 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
   final List<Comment> _comments = [
     Comment(
+      id: 'comment1',
+      recipeId: '',
+      userId: 'user1',
       username: 'Sarah',
-      text:
+      content:
           'I made this last night and it was delicious! Will definitely make again.',
-      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
+      datePosted: DateTime.now().subtract(const Duration(hours: 5)),
       likes: 12,
     ),
     Comment(
+      id: 'comment2',
+      recipeId: '',
+      userId: 'user2',
       username: 'Mike',
-      text:
+      content:
           'Great recipe! I added some extra garlic and it turned out amazing.',
-      timestamp: DateTime.now().subtract(const Duration(days: 2)),
+      datePosted: DateTime.now().subtract(const Duration(days: 2)),
       likes: 8,
     ),
   ];
@@ -54,11 +64,149 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   void initState() {
     super.initState();
     _loadRecipe();
+    _checkIfRecipeIsSaved();
   }
 
   void _loadRecipe() {
     _recipe = MockDataService.getRecipeById(widget.recipeId);
     setState(() {});
+  }
+
+  Future<void> _checkIfRecipeIsSaved() async {
+    try {
+      final currentUser = UserSessionService.getCurrentUser();
+      if (currentUser == null) {
+        print('❌ No user logged in');
+        setState(() {
+          _isFavorite = false;
+        });
+        return;
+      }
+
+      final isSaved = await FirebaseService.isRecipeSavedByUser(
+        currentUser.id,
+        widget.recipeId,
+      );
+      setState(() {
+        _isFavorite = isSaved;
+      });
+    } catch (e) {
+      print('❌ Error checking if recipe is saved: $e');
+      setState(() {
+        _isFavorite = false;
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final currentUser = UserSessionService.getCurrentUser();
+      if (currentUser == null) {
+        _showSnackBar('Please log in to save recipes', Icons.error);
+        return;
+      }
+
+      if (_isFavorite) {
+        // Remove from favorites
+        print('📝 Removing recipe from favorites...');
+        await FirebaseService.unsaveRecipe(currentUser.id, widget.recipeId);
+        _showSnackBar('Removed from favorites', Icons.heart_broken);
+      } else {
+        // Add to favorites
+        print('📝 Adding recipe to favorites...');
+        await FirebaseService.saveRecipe(currentUser.id, widget.recipeId);
+        _showSnackBar('Added to favorites', Icons.favorite, isSuccess: true);
+      }
+
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+      print('✅ Recipe favorite status updated successfully');
+    } catch (e) {
+      print('❌ Error updating favorites: $e');
+      _showSnackBar('Error updating favorites. Please try again.', Icons.error);
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addAllIngredientsToGroceryList() async {
+    if (_recipe == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final currentUser = UserSessionService.getCurrentUser();
+      if (currentUser == null) {
+        _showSnackBar(
+            'Please log in to add ingredients to grocery list', Icons.error);
+        return;
+      }
+
+      int addedCount = 0;
+      print(
+          '📝 Adding ${_recipe!.ingredients.length} ingredients to grocery list...');
+
+      for (String ingredient in _recipe!.ingredients) {
+        final groceryItem = GroceryItem(
+          id: '', // Firebase will generate this
+          userId: currentUser.id,
+          recipeId: widget.recipeId,
+          itemName: ingredient,
+          quantity: '1', // Default quantity
+        );
+
+        await FirebaseService.addGroceryItem(groceryItem);
+        addedCount++;
+      }
+
+      print('✅ Successfully added $addedCount ingredients to grocery list');
+      _showSnackBar(
+        'Added $addedCount ingredients to grocery list',
+        Icons.shopping_cart,
+        isSuccess: true,
+      );
+    } catch (e) {
+      print('❌ Error adding to grocery list: $e');
+      _showSnackBar(
+          'Error adding to grocery list. Please try again.', Icons.error);
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showSnackBar(String message, IconData icon, {bool isSuccess = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              icon,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isSuccess ? Colors.green : AppColors.primary,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 
   @override
@@ -73,9 +221,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         _comments.insert(
           0,
           Comment(
+            id: 'comment_${DateTime.now().millisecondsSinceEpoch}',
+            recipeId: widget.recipeId,
+            userId: 'current_user',
             username: 'You',
-            text: text.trim(),
-            timestamp: DateTime.now(),
+            content: text.trim(),
+            datePosted: DateTime.now(),
           ),
         );
       });
@@ -106,6 +257,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildRecipeHeader(),
+                        const SizedBox(height: 16),
+                        _buildActionButtons(),
                         const SizedBox(height: 20),
                         _buildInfoRow(),
                         const SizedBox(height: 28),
@@ -193,6 +346,36 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ),
         ),
       ),
+      actions: [
+        Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.8),
+            shape: BoxShape.circle,
+          ),
+          child: _isLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                )
+              : IconButton(
+                  onPressed: _toggleFavorite,
+                  icon: Icon(
+                    _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: _isFavorite ? Colors.red : AppColors.textPrimary,
+                    size: 24,
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
@@ -274,6 +457,53 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _isLoading ? null : _addAllIngredientsToGroceryList,
+              icon: const Icon(Icons.shopping_cart_outlined),
+              label: const Text('Add to Grocery List'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: _isFavorite
+                  ? Colors.red.withOpacity(0.1)
+                  : Colors.grey.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isFavorite ? Colors.red : Colors.grey,
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              onPressed: _isLoading ? null : _toggleFavorite,
+              icon: Icon(
+                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorite ? Colors.red : Colors.grey[600],
+                size: 24,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

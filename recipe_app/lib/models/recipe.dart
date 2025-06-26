@@ -13,6 +13,13 @@ class Recipe {
   final bool isFavorite;
   final String authorId;
   final String authorName;
+  final DateTime dateCreated;
+  final String? description;
+  final String? difficultyLevel;
+  final double? fat;
+  final double? protein;
+  final double? carbs;
+  final List<String> tags;
 
   Recipe({
     required this.id,
@@ -29,7 +36,14 @@ class Recipe {
     this.isFavorite = false,
     required this.authorId,
     required this.authorName,
-  });
+    DateTime? dateCreated,
+    this.description,
+    this.difficultyLevel,
+    this.fat,
+    this.protein,
+    this.carbs,
+    this.tags = const [],
+  }) : dateCreated = dateCreated ?? DateTime.now();
 
   Recipe copyWith({
     String? id,
@@ -46,6 +60,13 @@ class Recipe {
     bool? isFavorite,
     String? authorId,
     String? authorName,
+    DateTime? dateCreated,
+    String? description,
+    String? difficultyLevel,
+    double? fat,
+    double? protein,
+    double? carbs,
+    List<String>? tags,
   }) {
     return Recipe(
       id: id ?? this.id,
@@ -62,6 +83,66 @@ class Recipe {
       isFavorite: isFavorite ?? this.isFavorite,
       authorId: authorId ?? this.authorId,
       authorName: authorName ?? this.authorName,
+      dateCreated: dateCreated ?? this.dateCreated,
+      description: description ?? this.description,
+      difficultyLevel: difficultyLevel ?? this.difficultyLevel,
+      fat: fat ?? this.fat,
+      protein: protein ?? this.protein,
+      carbs: carbs ?? this.carbs,
+      tags: tags ?? this.tags,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'category': category,
+      'image': image,
+      'rating': rating,
+      'prepTimeMinutes': prepTimeMinutes,
+      'servings': servings,
+      'calories': calories,
+      'ingredients': ingredients,
+      'directions': directions,
+      'nutritions': nutritions,
+      'isFavorite': isFavorite,
+      'authorId': authorId,
+      'authorName': authorName,
+      'dateCreated': dateCreated.millisecondsSinceEpoch,
+      'description': description,
+      'difficultyLevel': difficultyLevel,
+      'fat': fat,
+      'protein': protein,
+      'carbs': carbs,
+      'tags': tags,
+    };
+  }
+
+  factory Recipe.fromJson(Map<String, dynamic> json) {
+    return Recipe(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      category: json['category'] ?? '',
+      image: json['image'] ?? '',
+      rating: (json['rating'] ?? 0.0).toDouble(),
+      prepTimeMinutes: json['prepTimeMinutes'] ?? 0,
+      servings: json['servings'] ?? 1,
+      calories: json['calories'] ?? 0,
+      ingredients: List<String>.from(json['ingredients'] ?? []),
+      directions: List<String>.from(json['directions'] ?? []),
+      nutritions: List<String>.from(json['nutritions'] ?? []),
+      isFavorite: json['isFavorite'] ?? false,
+      authorId: json['authorId'] ?? '',
+      authorName: json['authorName'] ?? '',
+      dateCreated: DateTime.fromMillisecondsSinceEpoch(
+          json['dateCreated'] ?? DateTime.now().millisecondsSinceEpoch),
+      description: json['description'],
+      difficultyLevel: json['difficultyLevel'],
+      fat: json['fat']?.toDouble(),
+      protein: json['protein']?.toDouble(),
+      carbs: json['carbs']?.toDouble(),
+      tags: List<String>.from(json['tags'] ?? []),
     );
   }
 }

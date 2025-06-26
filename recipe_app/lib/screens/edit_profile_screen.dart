@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/models/user.dart';
-import 'package:recipe_app/services/mock_data_service.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({Key? key}) : super(key: key);
@@ -29,8 +29,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _currentUser = MockDataService.getCurrentUser();
-    _initializeFields();
+    final user = UserSessionService.getCurrentUser();
+    if (user != null) {
+      _currentUser = user;
+      _initializeFields();
+    } else {
+      // No user logged in, redirect to login
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/login');
+      });
+    }
   }
 
   void _initializeFields() {
@@ -173,11 +181,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         // In a real app, you would upload the image to a server here
         // For now, we'll just use the local file path
         finalImageUrl = _profileImage!.path;
-        bool imageUpdated =
-            await MockDataService.updateProfileImage(finalImageUrl);
-        if (!imageUpdated) {
-          throw Exception('Failed to update profile image');
-        }
+        print('📸 Profile image updated to: $finalImageUrl');
       }
 
       // Create updated user object
@@ -191,8 +195,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         profileImageUrl: finalImageUrl,
       );
 
-      // Update user profile
-      bool success = await MockDataService.updateUserProfile(updatedUser);
+      // Update user profile using UserSessionService
+      bool success = await UserSessionService.updateUserProfile(updatedUser);
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(

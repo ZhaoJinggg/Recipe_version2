@@ -1,3 +1,5 @@
+// Import removed - PostComment is defined in this file
+
 class Post {
   final String id;
   final String userId;
@@ -6,7 +8,7 @@ class Post {
   final String content;
   final String? image;
   final DateTime createdAt;
-  final List<Comment> comments;
+  final List<PostComment> comments;
   final int likes;
   final bool hasLiked;
 
@@ -31,7 +33,7 @@ class Post {
     String? content,
     String? imageUrl,
     DateTime? createdAt,
-    List<Comment>? comments,
+    List<PostComment>? comments,
     int? likes,
     bool? hasLiked,
   }) {
@@ -41,16 +43,49 @@ class Post {
       userName: userName ?? this.userName,
       userProfileUrl: userProfileUrl ?? this.userProfileUrl,
       content: content ?? this.content,
-      image: image ?? this.image,
+      image: imageUrl ?? image,
       createdAt: createdAt ?? this.createdAt,
       comments: comments ?? this.comments,
       likes: likes ?? this.likes,
       hasLiked: hasLiked ?? this.hasLiked,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'userName': userName,
+      'userProfileUrl': userProfileUrl,
+      'content': content,
+      'image': image,
+      'createdAt': createdAt.millisecondsSinceEpoch,
+      'comments': comments.map((comment) => comment.toJson()).toList(),
+      'likes': likes,
+      'hasLiked': hasLiked,
+    };
+  }
+
+  factory Post.fromJson(Map<String, dynamic> json) {
+    return Post(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      userName: json['userName'] ?? '',
+      userProfileUrl: json['userProfileUrl'],
+      content: json['content'] ?? '',
+      image: json['image'],
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+          json['createdAt'] ?? DateTime.now().millisecondsSinceEpoch),
+      comments: (json['comments'] as List<dynamic>? ?? [])
+          .map((commentJson) => PostComment.fromJson(commentJson))
+          .toList(),
+      likes: json['likes'] ?? 0,
+      hasLiked: json['hasLiked'] ?? false,
+    );
+  }
 }
 
-class Comment {
+class PostComment {
   final String id;
   final String userId;
   final String userName;
@@ -58,7 +93,7 @@ class Comment {
   final String content;
   final DateTime createdAt;
 
-  Comment({
+  PostComment({
     required this.id,
     required this.userId,
     required this.userName,
@@ -66,4 +101,27 @@ class Comment {
     required this.content,
     required this.createdAt,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'userName': userName,
+      'userProfileUrl': userProfileUrl,
+      'content': content,
+      'createdAt': createdAt.millisecondsSinceEpoch,
+    };
+  }
+
+  factory PostComment.fromJson(Map<String, dynamic> json) {
+    return PostComment(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      userName: json['userName'] ?? '',
+      userProfileUrl: json['userProfileUrl'],
+      content: json['content'] ?? '',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+          json['createdAt'] ?? DateTime.now().millisecondsSinceEpoch),
+    );
+  }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/models/recipe.dart';
+import 'package:recipe_app/models/user.dart';
 import 'package:recipe_app/services/mock_data_service.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 import 'package:recipe_app/widgets/category_selector.dart';
 import 'package:recipe_app/widgets/recipe_card.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
@@ -29,12 +31,34 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Recipe> _recipes = [];
   List<Recipe> _dailyInspirationRecipes = [];
   int _currentNavIndex = 0;
+  User? _currentUser;
+  bool _isLoadingUser = true;
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
     _loadRecipes();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoadingUser = true;
+    });
+
+    try {
+      final user = UserSessionService.getCurrentUser();
+      setState(() {
+        _currentUser = user;
+        _isLoadingUser = false;
+      });
+    } catch (e) {
+      print('❌ Error loading user data: $e');
+      setState(() {
+        _isLoadingUser = false;
+      });
+    }
   }
 
   void _loadCategories() {
@@ -102,8 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = MockDataService.getCurrentUser();
-
     return Scaffold(
       drawer: Drawer(
         child: Container(
@@ -115,40 +137,114 @@ class _HomeScreenState extends State<HomeScreen> {
                     const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
                 color: Colors.amber,
                 width: double.infinity,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.white,
-                      radius: 40,
-                      child: Text(
-                        user.name[0],
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF004D40),
+                child: _isLoadingUser
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF004D40),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    Text(
-                      user.name,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      user.email,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                  ],
-                ),
+                      )
+                    : _currentUser != null
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: Colors.white,
+                                radius: 40,
+                                child: _currentUser!.profileImageUrl != null
+                                    ? (_currentUser!.profileImageUrl!
+                                            .startsWith('assets/')
+                                        ? Image.asset(
+                                            _currentUser!.profileImageUrl!,
+                                            fit: BoxFit.cover,
+                                            width: 80,
+                                            height: 80,
+                                          )
+                                        : Image.network(
+                                            _currentUser!.profileImageUrl!,
+                                            fit: BoxFit.cover,
+                                            width: 80,
+                                            height: 80,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Text(
+                                                _currentUser!.name[0]
+                                                    .toUpperCase(),
+                                                style: const TextStyle(
+                                                  fontSize: 28,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF004D40),
+                                                ),
+                                              );
+                                            },
+                                          ))
+                                    : Text(
+                                        _currentUser!.name[0].toUpperCase(),
+                                        style: const TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF004D40),
+                                        ),
+                                      ),
+                              ),
+                              const SizedBox(height: 15),
+                              Text(
+                                _currentUser!.name,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF004D40),
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                _currentUser!.email,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF004D40),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const CircleAvatar(
+                                backgroundColor: Colors.white,
+                                radius: 40,
+                                child: Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: Color(0xFF004D40),
+                                ),
+                              ),
+                              const SizedBox(height: 15),
+                              const Text(
+                                'Guest User',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF004D40),
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(context, '/login');
+                                },
+                                child: const Text(
+                                  'Tap to Login',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Color(0xFF004D40),
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
               ),
               const SizedBox(height: 20),
               _buildDrawerItem(Icons.person, 'Profile'),
@@ -397,6 +493,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+
+              // Properly logout using UserSessionService
+              await UserSessionService.logoutUser();
+
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDrawerItem(IconData icon, String title) {
     return ListTile(
       leading: Icon(
@@ -429,7 +557,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.pushNamed(context, '/help_support');
             break;
           case 'Logout':
-            Navigator.pushNamed(context, '/login');
+            _showLogoutDialog();
             break;
         }
       },

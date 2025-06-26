@@ -148,7 +148,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: Text(_language),
           trailing:
               const Icon(Icons.chevron_right, color: AppColors.textPrimary),
-
         ),
         ListTile(
           leading: const Icon(Icons.straighten, color: AppColors.textPrimary),
