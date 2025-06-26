@@ -17,18 +17,25 @@ class UserSessionService {
     _saveUserIdToPrefs(user.id);
   }
 
-  /// Simulate login (always succeeds)
+  /// Login user using Firebase Auth
   static Future<bool> loginUser(String email, String password) async {
     try {
-      // Get user profile from Firestore by email
-      final userProfile = await FirebaseService.getUserByEmail(email);
-      if (userProfile != null && userProfile.password == password) {
-        _currentUser = userProfile;
-        await _saveUserIdToPrefs(userProfile.id);
-        print('✅ User profile loaded: ${userProfile.name}');
-        return true;
+      // Sign in with Firebase Auth
+      final userCredential = await FirebaseService.signInWithEmailAndPassword(email, password);
+      if (userCredential.user != null) {
+        // Fetch user profile from Firestore
+        final userProfile = await FirebaseService.getUserById(userCredential.user!.uid);
+        if (userProfile != null) {
+          _currentUser = userProfile;
+          await _saveUserIdToPrefs(userProfile.id);
+          print('✅ User profile loaded: \\${userProfile.name}');
+          return true;
+        } else {
+          print('❌ User profile not found in Firestore');
+          return false;
+        }
       } else {
-        print('❌ Invalid email or password');
+        print('❌ Firebase Auth sign-in failed');
         return false;
       }
     } catch (e) {
@@ -37,7 +44,7 @@ class UserSessionService {
     }
   }
 
-  /// Simulate registration (always succeeds)
+  /// Register user using Firebase Auth
   static Future<bool> registerUser({
     required String name,
     required String email,
@@ -47,24 +54,30 @@ class UserSessionService {
     String? dateOfBirth,
   }) async {
     try {
-      // Save user profile in Firestore with plain text password
-      final newUser = AppUser.User(
-        id: email, // Use email as ID for consistency
-        name: name,
-        email: email,
-        phone: phone,
-        gender: gender,
-        dateOfBirth: dateOfBirth,
-        bio: 'Simulated user',
-        password: password,
-      );
-      final success = await FirebaseService.createOrUpdateUser(newUser);
-      if (!success) {
-        print('❌ Failed to save user to Firestore');
+      // Create user in Firebase Auth
+      final userCredential = await FirebaseService.createUserWithEmailAndPassword(email, password);
+      if (userCredential.user != null) {
+        // Create user profile in Firestore
+        final newUser = AppUser.User(
+          id: userCredential.user!.uid,
+          name: name,
+          email: email,
+          phone: phone,
+          gender: gender,
+          dateOfBirth: dateOfBirth,
+          bio: 'Simulated user',
+        );
+        final success = await FirebaseService.createOrUpdateUser(newUser);
+        if (!success) {
+          print('❌ Failed to save user to Firestore');
+          return false;
+        }
+        print('✅ Registration for: \\${newUser.email}');
+        return true;
+      } else {
+        print('❌ Firebase Auth registration failed');
         return false;
       }
-      print('✅ Registration for: ${newUser.email}');
-      return true;
     } catch (e) {
       print('❌ Error during registration: $e');
       return false;

@@ -9,7 +9,6 @@ class User {
   final String? gender;
   final List<String> favoriteRecipes;
   final List<String> postedRecipes;
-  final String? password;
 
   User({
     required this.id,
@@ -22,7 +21,6 @@ class User {
     this.gender,
     this.favoriteRecipes = const [],
     this.postedRecipes = const [],
-    this.password,
   });
 
   get profileImage => null;
@@ -38,7 +36,6 @@ class User {
     String? gender,
     List<String>? favoriteRecipes,
     List<String>? postedRecipes,
-    String? password,
   }) {
     return User(
       id: id ?? this.id,
@@ -51,7 +48,6 @@ class User {
       gender: gender ?? this.gender,
       favoriteRecipes: favoriteRecipes ?? this.favoriteRecipes,
       postedRecipes: postedRecipes ?? this.postedRecipes,
-      password: password ?? this.password,
     );
   }
 
@@ -67,7 +63,6 @@ class User {
       'gender': gender,
       'favoriteRecipes': favoriteRecipes,
       'postedRecipes': postedRecipes,
-      'password': password,
     };
   }
 
@@ -83,7 +78,6 @@ class User {
       gender: json['gender'],
       favoriteRecipes: List<String>.from(json['favoriteRecipes'] ?? []),
       postedRecipes: List<String>.from(json['postedRecipes'] ?? []),
-      password: json['password'],
     );
   }
 }

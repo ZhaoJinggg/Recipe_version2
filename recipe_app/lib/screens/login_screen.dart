@@ -103,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   children: [
                     const Icon(Icons.error, color: Colors.white),
                     const SizedBox(width: 8),
-                    const Text('Login failed. Please try again.'),
+                    const Text('Login failed. Please check your credentials.'),
                   ],
                 ),
                 backgroundColor: Colors.red[600],
