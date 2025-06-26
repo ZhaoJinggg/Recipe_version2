@@ -25,7 +25,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await UserSessionService.initialize();
-  //await DataMigrationService.reimportMockRecipes();
   runApp(const MyApp());
 }
 
