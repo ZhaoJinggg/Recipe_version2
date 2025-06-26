@@ -6,6 +6,11 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
+    implementation("com.google.firebase:firebase-firestore")
+}
+
 android {
     namespace = "com.example.recipe_app"
     compileSdk = flutter.compileSdkVersion
@@ -42,9 +47,4 @@ android {
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
-    implementation("com.google.firebase:firebase-analytics")
 }

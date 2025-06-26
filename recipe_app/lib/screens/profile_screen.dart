@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/services/mock_data_service.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
-import 'package:recipe_app/widgets/localized_text.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -28,11 +27,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: LocalizedText(
-          englishText: 'My Profile',
-          chineseText: '我的档案',
-          malayText: 'Profil Saya',
-          style: const TextStyle(
+        title: const Text(
+          'My Profile',
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -178,11 +175,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              LocalizedText(
-                                englishText: 'Personal Information',
-                                chineseText: '个人信息',
-                                malayText: 'Maklumat Peribadi',
-                                style: const TextStyle(
+                              const Text(
+                                'Personal Information',
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textPrimary,

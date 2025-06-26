@@ -16,16 +16,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<CategoryItem> _categories = [
-  CategoryItem(title: 'All', icon: FontAwesomeIcons.list),
-  CategoryItem(title: 'Appetizers', icon: FontAwesomeIcons.utensils),
-  CategoryItem(title: 'Soups', icon: FontAwesomeIcons.bowlFood),
-  CategoryItem(title: 'Salads', icon: FontAwesomeIcons.leaf),
-  CategoryItem(title: 'Main Course', icon: FontAwesomeIcons.drumstickBite),
-  CategoryItem(title: 'Dessert', icon: FontAwesomeIcons.iceCream),
-];
+    CategoryItem(title: 'All', icon: FontAwesomeIcons.list),
+    CategoryItem(title: 'Appetizers', icon: FontAwesomeIcons.utensils),
+    CategoryItem(title: 'Soups', icon: FontAwesomeIcons.bowlFood),
+    CategoryItem(title: 'Salads', icon: FontAwesomeIcons.leaf),
+    CategoryItem(title: 'Main Course', icon: FontAwesomeIcons.drumstickBite),
+    CategoryItem(title: 'Dessert', icon: FontAwesomeIcons.iceCream),
+  ];
 
   int _selectedCategoryIndex = 0;
-  List<Recipe> _allRecipes = []; 
+  List<Recipe> _allRecipes = [];
   List<Recipe> _recipes = [];
   List<Recipe> _dailyInspirationRecipes = [];
   int _currentNavIndex = 0;
@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // In a real app, this would fetch from an API
     setState(() {
       _allRecipes = MockDataService.getAllRecipes();
-      _recipes = _allRecipes;  
+      _recipes = _allRecipes;
       _dailyInspirationRecipes = MockDataService.getDailyInspirationRecipes();
     });
   }
@@ -66,12 +66,13 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedCategoryIndex = index;
       String selectedCategory = _categories[index].title;
-      
+
       if (selectedCategory == 'All') {
         _recipes = _allRecipes;
       } else {
         _recipes = _allRecipes.where((recipe) {
-          return recipe.category.toLowerCase() == selectedCategory.toLowerCase();
+          return recipe.category.toLowerCase() ==
+              selectedCategory.toLowerCase();
         }).toList();
       }
     });
@@ -253,124 +254,128 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDailyInspiration() {
-  return SizedBox(
-    height: 350, // Fixed height for the entire component
-    child: PageView.builder(
-      itemCount: _dailyInspirationRecipes.length,
-      controller: PageController(viewportFraction: 0.9),
-      itemBuilder: (context, index) {
-        final recipe = _dailyInspirationRecipes[index];
-        return GestureDetector(
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              '/recipe',
-              arguments: {'recipeId': recipe.id},
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: AppColors.background,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+    return SizedBox(
+      height: 350, // Fixed height for the entire component
+      child: PageView.builder(
+        itemCount: _dailyInspirationRecipes.length,
+        controller: PageController(viewportFraction: 0.9),
+        itemBuilder: (context, index) {
+          final recipe = _dailyInspirationRecipes[index];
+          return GestureDetector(
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                '/recipe',
+                arguments: {'recipeId': recipe.id},
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8.0),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: AppColors.background,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.3),
+                  width: 1,
                 ),
-              ],
-              border: Border.all(
-                color: AppColors.primary.withOpacity(0.3),
-                width: 1,
+              ),
+              child: Column(
+                // Changed from ClipRRect to Column
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image Section
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    child: SizedBox(
+                      height: 180, // Reduced from 200 to make room for text
+                      width: double.infinity,
+                      child: Image(
+                        image: AssetImage(recipe.image),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  // Text Content Section
+                  Expanded(
+                    // Use Expanded to take remaining space
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            recipe.title,
+                            style: const TextStyle(
+                              fontSize: 18, // Reduced from 20
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                            maxLines: 1, // Prevent text overflow
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6), // Reduced from 8
+                          Row(
+                            mainAxisSize: MainAxisSize
+                                .min, // Prevent star row from expanding
+                            children: List.generate(5, (starIndex) {
+                              return Icon(
+                                Icons.star,
+                                color: starIndex < recipe.rating.floor()
+                                    ? AppColors.primary
+                                    : Colors.grey[300],
+                                size: 16, // Reduced from 18
+                              );
+                            }),
+                          ),
+                          const Spacer(), // Pushes button to bottom
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/recipe',
+                                  arguments: {'recipeId': recipe.id},
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: AppColors.textPrimary,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 10), // Reduced padding
+                              ),
+                              child: const Text(
+                                'SHOW DETAILS',
+                                style: TextStyle(fontSize: 12), // Smaller text
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Column( // Changed from ClipRRect to Column
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image Section
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                  child: SizedBox(
-                    height: 180, // Reduced from 200 to make room for text
-                    width: double.infinity,
-                    child: Image(
-                      image: AssetImage(recipe.image),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                // Text Content Section
-                Expanded( // Use Expanded to take remaining space
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          recipe.title,
-                          style: TextStyle(
-                            fontSize: 18, // Reduced from 20
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                          maxLines: 1, // Prevent text overflow
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6), // Reduced from 8
-                        Row(
-                          mainAxisSize: MainAxisSize.min, // Prevent star row from expanding
-                          children: List.generate(5, (starIndex) {
-                            return Icon(
-                              Icons.star,
-                              color: starIndex < recipe.rating.floor()
-                                  ? AppColors.primary
-                                  : Colors.grey[300],
-                              size: 16, // Reduced from 18
-                            );
-                          }),
-                        ),
-                        const Spacer(), // Pushes button to bottom
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/recipe',
-                                arguments: {'recipeId': recipe.id},
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.textPrimary,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 10), // Reduced padding
-                            ),
-                            child: const Text(
-                              'SHOW DETAILS',
-                              style: TextStyle(fontSize: 12), // Smaller text
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    ),
-  );
-}
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildRecipeList() {
     return Padding(
@@ -421,22 +426,10 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.pushNamed(context, '/settings');
             break;
           case 'Help & Support':
-            // TODO: Implement help & support
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Help & Support coming soon!'),
-                backgroundColor: AppColors.primary,
-              ),
-            );
+            Navigator.pushNamed(context, '/help_support');
             break;
           case 'Logout':
-            // TODO: Implement logout
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Logout functionality coming soon!'),
-                backgroundColor: AppColors.primary,
-              ),
-            );
+            Navigator.pushNamed(context, '/login');
             break;
         }
       },

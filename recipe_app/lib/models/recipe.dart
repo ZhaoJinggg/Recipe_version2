@@ -51,7 +51,7 @@ class Recipe {
       id: id ?? this.id,
       title: title ?? this.title,
       category: category ?? this.category,
-      image: this.image,
+      image: image,
       rating: rating ?? this.rating,
       prepTimeMinutes: prepTimeMinutes ?? this.prepTimeMinutes,
       servings: servings ?? this.servings,
@@ -64,4 +64,4 @@ class Recipe {
       authorName: authorName ?? this.authorName,
     );
   }
-} 
+}

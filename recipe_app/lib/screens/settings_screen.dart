@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
-import 'package:recipe_app/providers/language_provider.dart';
-import 'package:recipe_app/widgets/localized_text.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -18,6 +15,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Setting values
   bool _notificationsEnabled = true;
   String _measurementUnit = 'Metric';
+  String _language = 'English';
   bool _saveRecipesOffline = true;
 
   @override
@@ -31,11 +29,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: LocalizedText(
-          englishText: 'Settings',
-          chineseText: '设置',
-          malayText: 'Tetapan',
-          style: const TextStyle(
+        title: const Text(
+          'Settings',
+          style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -146,23 +142,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildAppPreferences() {
     return Column(
       children: [
-        Consumer<LanguageProvider>(
-          builder: (context, languageProvider, child) {
-            return ListTile(
-              leading: const Icon(Icons.language, color: AppColors.textPrimary),
-              title: LocalizedText(
-                englishText: 'Language',
-                chineseText: '语言',
-                malayText: 'Bahasa',
-              ),
-              subtitle: Text(languageProvider.currentLanguageDisplayName),
-              trailing:
-                  const Icon(Icons.chevron_right, color: AppColors.textPrimary),
-              onTap: () {
-                _showLanguageSelector();
-              },
-            );
-          },
+        ListTile(
+          leading: const Icon(Icons.language, color: AppColors.textPrimary),
+          title: const Text('Language'),
+          subtitle: Text(_language),
+          trailing:
+              const Icon(Icons.chevron_right, color: AppColors.textPrimary),
+
         ),
         ListTile(
           leading: const Icon(Icons.straighten, color: AppColors.textPrimary),
@@ -175,45 +161,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           },
         ),
       ],
-    );
-  }
-
-  void _showLanguageSelector() {
-    final languageProvider =
-        Provider.of<LanguageProvider>(context, listen: false);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: LocalizedText(
-            englishText: 'Select Language',
-            chineseText: '选择语言',
-            malayText: 'Pilih Bahasa',
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildLanguageOption('English', 'en', languageProvider),
-              _buildLanguageOption('Mandarin', 'zh', languageProvider),
-              _buildLanguageOption('Bahasa Malaysia', 'ms', languageProvider),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLanguageOption(
-      String language, String languageCode, LanguageProvider languageProvider) {
-    return ListTile(
-      title: Text(language),
-      trailing: languageProvider.currentLocale.languageCode == languageCode
-          ? const Icon(Icons.check, color: AppColors.primary)
-          : null,
-      onTap: () {
-        languageProvider.setLanguage(languageCode);
-        Navigator.pop(context);
-      },
     );
   }
 
