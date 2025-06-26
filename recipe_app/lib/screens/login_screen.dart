@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:video_player/video_player.dart';
 import 'package:recipe_app/services/user_session_service.dart';
@@ -70,19 +69,12 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       setState(() {
         _isLoading = true;
       });
-
       try {
-        // Attempt Firebase Authentication login
-        print(
-            '🔐 Attempting Firebase Auth login with email: ${_emailController.text}');
         final success = await UserSessionService.loginUser(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
-
         if (success) {
-          print('✅ Login successful');
-
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -101,12 +93,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                 ),
               ),
             );
-
-            // Navigate to home screen after successful login
             Navigator.pushReplacementNamed(context, '/');
           }
         } else {
-          // Login failed - show generic error
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -114,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   children: [
                     const Icon(Icons.error, color: Colors.white),
                     const SizedBox(width: 8),
-                    const Text('Login failed. Please check your credentials.'),
+                    const Text('Login failed. Please try again.'),
                   ],
                 ),
                 backgroundColor: Colors.red[600],
@@ -127,34 +116,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
             );
           }
         }
-      } on FirebaseAuthException catch (e) {
-        print('❌ Firebase Auth error: ${e.code} - ${e.message}');
-
-        // Show user-friendly error message
-        final errorMessage = UserSessionService.getAuthErrorMessage(e);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.error, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(errorMessage)),
-                ],
-              ),
-              backgroundColor: Colors.red[600],
-              duration: const Duration(seconds: 4),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          );
-        }
       } catch (e) {
-        print('❌ Login error: $e');
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -163,8 +125,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   const Icon(Icons.error, color: Colors.white),
                   const SizedBox(width: 8),
                   const Expanded(
-                    child:
-                        Text('An unexpected error occurred. Please try again.'),
+                    child: Text('An unexpected error occurred. Please try again.'),
                   ),
                 ],
               ),
@@ -185,108 +146,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         }
       }
     }
-  }
-
-  void _showForgotPasswordDialog() {
-    final emailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-                'Enter your email address to receive password reset instructions.'),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                hintText: 'Enter your email',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final email = emailController.text.trim();
-              if (email.isNotEmpty) {
-                Navigator.pop(context);
-
-                try {
-                  final success =
-                      await UserSessionService.sendPasswordResetEmail(email);
-
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            Icon(
-                              success ? Icons.check_circle : Icons.error,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                success
-                                    ? 'Password reset email sent! Check your inbox.'
-                                    : 'Failed to send reset email. Please try again.',
-                              ),
-                            ),
-                          ],
-                        ),
-                        backgroundColor:
-                            success ? Colors.green[600] : Colors.red[600],
-                        duration: const Duration(seconds: 4),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            const Icon(Icons.error, color: Colors.white),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text('Error: ${e.toString()}'),
-                            ),
-                          ],
-                        ),
-                        backgroundColor: Colors.red[600],
-                        duration: const Duration(seconds: 4),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    );
-                  }
-                }
-              }
-            },
-            child: const Text('Send Reset Email'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -543,44 +402,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                                 }
                                 return null;
                               },
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Remember me checkbox and Forgot password link
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Checkbox(
-                                      value: _rememberMe,
-                                      activeColor: Colors.white,
-                                      checkColor: Colors.black,
-                                      side:
-                                          const BorderSide(color: Colors.white),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _rememberMe = value ?? false;
-                                        });
-                                      },
-                                    ),
-                                    const Text(
-                                      'Remember me',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ],
-                                ),
-                                TextButton(
-                                  child: const Text(
-                                    'Forgot Password?',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  onPressed: _showForgotPasswordDialog,
-                                ),
-                              ],
                             ),
                             const SizedBox(height: 24),
 

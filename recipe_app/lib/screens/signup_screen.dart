@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/services/user_session_service.dart';
 
@@ -50,23 +49,16 @@ class _SignupScreenState extends State<SignupScreen> {
       setState(() {
         _isLoading = true;
       });
-
       try {
-        // Register user using Firebase Authentication
-        print('📝 Registering user account with Firebase Auth...');
         final success = await UserSessionService.registerUser(
           name: _usernameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
           phone: _phoneController.text.trim(),
           gender: _selectedGender,
-          dateOfBirth:
-              _selectedDate != null ? _formatDate(_selectedDate!) : null,
+          dateOfBirth: _selectedDate != null ? _formatDate(_selectedDate!) : null,
         );
-
         if (success) {
-          print('✅ User account registered successfully');
-
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -75,8 +67,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     const Icon(Icons.check_circle, color: Colors.white),
                     const SizedBox(width: 8),
                     const Expanded(
-                      child: Text(
-                          'Account created successfully! Please sign in with your new account.'),
+                      child: Text('Account created successfully! Please sign in with your new account.'),
                     ),
                   ],
                 ),
@@ -88,41 +79,12 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
             );
-
-            // Navigate to login screen
             Navigator.pushReplacementNamed(context, '/login');
           }
         } else {
           throw Exception('Failed to create user account');
         }
-      } on FirebaseAuthException catch (e) {
-        print('❌ Firebase Auth error: ${e.code} - ${e.message}');
-
-        // Show user-friendly error message
-        final errorMessage = UserSessionService.getAuthErrorMessage(e);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.error, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(errorMessage)),
-                ],
-              ),
-              backgroundColor: Colors.red[600],
-              duration: const Duration(seconds: 4),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          );
-        }
       } catch (e) {
-        print('❌ Error creating account: $e');
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -131,8 +93,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   const Icon(Icons.error, color: Colors.white),
                   const SizedBox(width: 8),
                   const Expanded(
-                    child:
-                        Text('An unexpected error occurred. Please try again.'),
+                    child: Text('An unexpected error occurred. Please try again.'),
                   ),
                 ],
               ),

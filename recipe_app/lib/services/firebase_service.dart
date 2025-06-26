@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:recipe_app/models/recipe.dart';
 import 'package:recipe_app/models/user.dart' as AppUser;
 import 'package:recipe_app/models/post.dart';
@@ -10,6 +9,7 @@ import 'package:recipe_app/models/recipe_rating.dart';
 import 'package:recipe_app/models/ingredient.dart';
 import 'package:recipe_app/models/tag.dart';
 import 'package:recipe_app/models/saved_recipe.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -59,170 +59,6 @@ class FirebaseService {
   static void _logError(String operation, dynamic error) {
     print('❌ Firebase Error [$operation]: $error');
     print('Stack trace: ${StackTrace.current}');
-  }
-
-  // ==================== AUTHENTICATION METHODS ====================
-
-  /// Sign up with email and password
-  static Future<UserCredential?> signUpWithEmailAndPassword(
-      String email, String password) async {
-    try {
-      print('📝 Creating Firebase Auth account for: $email');
-
-      final credential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      print('✅ Firebase Auth account created successfully');
-      return credential;
-    } on FirebaseAuthException catch (e) {
-      _logError('signUpWithEmailAndPassword', e);
-      print('Firebase Auth Error Code: ${e.code}');
-      print('Firebase Auth Error Message: ${e.message}');
-      rethrow;
-    } catch (e) {
-      _logError('signUpWithEmailAndPassword', e);
-      rethrow;
-    }
-  }
-
-  /// Sign in with email and password
-  static Future<UserCredential?> signInWithEmailAndPassword(
-      String email, String password) async {
-    try {
-      print('🔐 Signing in with Firebase Auth: $email');
-
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      print('✅ Firebase Auth sign in successful');
-      return credential;
-    } on FirebaseAuthException catch (e) {
-      _logError('signInWithEmailAndPassword', e);
-      print('Firebase Auth Error Code: ${e.code}');
-      print('Firebase Auth Error Message: ${e.message}');
-      rethrow;
-    } catch (e) {
-      _logError('signInWithEmailAndPassword', e);
-      rethrow;
-    }
-  }
-
-  /// Sign out current user
-  static Future<void> signOut() async {
-    try {
-      await _auth.signOut();
-      print('👋 User signed out successfully');
-    } catch (e) {
-      _logError('signOut', e);
-      rethrow;
-    }
-  }
-
-  /// Get current Firebase Auth user
-  static User? getCurrentAuthUser() {
-    return _auth.currentUser;
-  }
-
-  /// Send password reset email
-  static Future<void> sendPasswordResetEmail(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-      print('📧 Password reset email sent to: $email');
-    } on FirebaseAuthException catch (e) {
-      _logError('sendPasswordResetEmail', e);
-      rethrow;
-    } catch (e) {
-      _logError('sendPasswordResetEmail', e);
-      rethrow;
-    }
-  }
-
-  /// Update password for current user
-  static Future<void> updatePassword(String newPassword) async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        await user.updatePassword(newPassword);
-        print('🔐 Password updated successfully');
-      } else {
-        throw Exception('No user is currently signed in');
-      }
-    } on FirebaseAuthException catch (e) {
-      _logError('updatePassword', e);
-      rethrow;
-    } catch (e) {
-      _logError('updatePassword', e);
-      rethrow;
-    }
-  }
-
-  /// Update email for current user
-  static Future<void> updateEmail(String newEmail) async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        await user.verifyBeforeUpdateEmail(newEmail);
-        print('📧 Email update verification sent successfully');
-      } else {
-        throw Exception('No user is currently signed in');
-      }
-    } on FirebaseAuthException catch (e) {
-      _logError('updateEmail', e);
-      rethrow;
-    } catch (e) {
-      _logError('updateEmail', e);
-      rethrow;
-    }
-  }
-
-  /// Re-authenticate user (required for sensitive operations)
-  static Future<void> reauthenticateUser(String password) async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null && user.email != null) {
-        final credential = EmailAuthProvider.credential(
-          email: user.email!,
-          password: password,
-        );
-        await user.reauthenticateWithCredential(credential);
-        print('🔐 User re-authenticated successfully');
-      } else {
-        throw Exception('No user is currently signed in or email is null');
-      }
-    } on FirebaseAuthException catch (e) {
-      _logError('reauthenticateUser', e);
-      rethrow;
-    } catch (e) {
-      _logError('reauthenticateUser', e);
-      rethrow;
-    }
-  }
-
-  /// Delete user account
-  static Future<void> deleteUserAccount() async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        // Delete user document from Firestore
-        await _firestore.collection(_usersCollection).doc(user.uid).delete();
-
-        // Delete Firebase Auth account
-        await user.delete();
-        print('🗑️ User account deleted successfully');
-      } else {
-        throw Exception('No user is currently signed in');
-      }
-    } on FirebaseAuthException catch (e) {
-      _logError('deleteUserAccount', e);
-      rethrow;
-    } catch (e) {
-      _logError('deleteUserAccount', e);
-      rethrow;
-    }
   }
 
   // ==================== USER METHODS ====================
@@ -887,5 +723,15 @@ class FirebaseService {
       print('Error initializing with mock data: $e');
       return false;
     }
+  }
+
+  /// Sign in with email and password
+  static Future<UserCredential> signInWithEmailAndPassword(String email, String password) async {
+    return await _auth.signInWithEmailAndPassword(email: email, password: password);
+  }
+
+  /// Create user with email and password
+  static Future<UserCredential> createUserWithEmailAndPassword(String email, String password) async {
+    return await _auth.createUserWithEmailAndPassword(email: email, password: password);
   }
 }
