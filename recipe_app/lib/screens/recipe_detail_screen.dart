@@ -24,7 +24,7 @@ class RecipeDetailScreen extends StatefulWidget {
 }
 
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
-  late Recipe? _recipe;
+  Recipe? _recipe;
   bool _isFavorite = false;
   bool _isLoading = false;
   int _currentImageIndex = 0;
@@ -67,8 +67,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     _checkIfRecipeIsSaved();
   }
 
-  void _loadRecipe() {
-    _recipe = MockDataService.getRecipeById(widget.recipeId);
+  Future<void> _loadRecipe() async {
+    _recipe = await FirebaseService.getRecipeById(widget.recipeId);
     setState(() {});
   }
 

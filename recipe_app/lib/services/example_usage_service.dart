@@ -4,7 +4,6 @@ import 'package:recipe_app/models/recipe.dart';
 
 /// Example service demonstrating how to use the new dynamic recipe tagging system
 class ExampleTaggingUsageService {
-  
   /// Example: Creating a recipe with automatic intelligent tagging
   static Future<String?> createRecipeWithAutoTagging() async {
     final recipe = Recipe(
@@ -32,18 +31,19 @@ class ExampleTaggingUsageService {
 
     // The system automatically generates and assigns intelligent tags
     final recipeId = await FirebaseService.createRecipe(recipe);
-    
+
     if (recipeId != null) {
       final assignedTags = await FirebaseService.getTagNamesForRecipe(recipeId);
       print('🏷️ Auto-assigned tags: ${assignedTags.join(', ')}');
     }
-    
+
     return recipeId;
   }
 
   /// Example: Search recipes by multiple tags
   static Future<void> searchByTags() async {
-    final quickEasyRecipes = await RecipeTaggingService.getRecipeIdsByTags(['Quick', 'Easy']);
+    final quickEasyRecipes =
+        await RecipeTaggingService.getRecipeIdsByTags(['Quick', 'Easy']);
     print('🔍 Found ${quickEasyRecipes.length} quick and easy recipes');
   }
-} 
+}

@@ -17,6 +17,7 @@ import 'package:recipe_app/services/user_session_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:recipe_app/firebase_options.dart';
+import 'package:recipe_app/services/data_migration_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await UserSessionService.initialize();
+  //await DataMigrationService.reimportMockRecipes();
   runApp(const MyApp());
 }
 
@@ -37,7 +39,8 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.theme,
       debugShowCheckedModeBanner: false,
       // Check if user is logged in to determine initial route
-      initialRoute: UserSessionService.getCurrentUser() != null ? '/' : '/login',
+      initialRoute:
+          UserSessionService.getCurrentUser() != null ? '/' : '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
@@ -46,7 +49,7 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfileScreen(),
         '/edit-profile': (context) => const EditProfileScreen(),
         '/settings': (context) => const SettingsScreen(),
-        // '/grocery': (context) => const GroceryListScreen(),
+        '/grocery': (context) => const GroceryListScreen(),
         '/community': (context) => const CommunityScreen(),
         '/search': (context) => const SearchScreen(),
         '/help_support': (context) => const HelpSupportScreen(),

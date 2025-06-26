@@ -3,6 +3,8 @@ import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/models/recipe.dart';
 import 'package:recipe_app/services/mock_data_service.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
+import 'package:recipe_app/services/firebase_service.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({Key? key}) : super(key: key);
@@ -12,21 +14,7 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  List<Recipe> _favoriteRecipes = [];
   final int _currentNavIndex = 3; // Favorites tab
-
-  @override
-  void initState() {
-    super.initState();
-    _loadFavorites();
-  }
-
-  void _loadFavorites() {
-    // In a real app, this would fetch from an API
-    setState(() {
-      _favoriteRecipes = MockDataService.getFavoriteRecipes();
-    });
-  }
 
   void _onNavBarTap(int index) {
     if (index != _currentNavIndex) {
@@ -46,6 +34,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = UserSessionService.getCurrentUser();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -66,8 +55,21 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           ),
         ),
       ),
-      body:
-          _favoriteRecipes.isEmpty ? _buildEmptyState() : _buildSavedContent(),
+      body: user == null
+          ? _buildEmptyState()
+          : StreamBuilder<List<Recipe>>(
+              stream: FirebaseService.streamSavedRecipesForUser(user.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final recipes = snapshot.data ?? [];
+                if (recipes.isEmpty) {
+                  return _buildEmptyState();
+                }
+                return _buildSavedContent(recipes);
+              },
+            ),
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _currentNavIndex,
         onTap: _onNavBarTap,
@@ -122,7 +124,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Widget _buildSavedContent() {
+  Widget _buildSavedContent(List<Recipe> recipes) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -150,7 +152,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           ),
         ),
         Expanded(
-          child: _buildFavoritesList(),
+          child: _buildFavoritesList(recipes),
         ),
       ],
     );
@@ -195,7 +197,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Widget _buildFavoritesList() {
+  Widget _buildFavoritesList(List<Recipe> recipes) {
     return GridView.builder(
       padding: const EdgeInsets.all(16.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -204,9 +206,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
-      itemCount: _favoriteRecipes.length,
+      itemCount: recipes.length,
       itemBuilder: (context, index) {
-        final recipe = _favoriteRecipes[index];
+        final recipe = recipes[index];
         return _buildRecipeCard(recipe);
       },
     );

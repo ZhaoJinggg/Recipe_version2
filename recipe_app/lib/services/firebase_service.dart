@@ -142,17 +142,14 @@ class FirebaseService {
   // Create recipe
   static Future<String?> createRecipe(Recipe recipe) async {
     try {
-      final docRef =
-          await _firestore.collection(_recipesCollection).add(recipe.toJson());
-
-      // Update the recipe with the generated ID
-      await docRef.update({'id': docRef.id});
-      
+      // Use the recipe's id as the document ID to prevent duplicates
+      await _firestore
+          .collection(_recipesCollection)
+          .doc(recipe.id)
+          .set(recipe.toJson());
       // Apply dynamic tagging using the new tagging service
-      // This replaces hardcoded tag assignment with intelligent auto-tagging
-      await _applyDynamicTagging(docRef.id, recipe);
-      
-      return docRef.id;
+      await _applyDynamicTagging(recipe.id, recipe);
+      return recipe.id;
     } catch (e) {
       print('Error creating recipe: $e');
       return null;
@@ -235,10 +232,10 @@ class FirebaseService {
           .collection(_recipesCollection)
           .doc(recipe.id)
           .update(recipe.toJson());
-      
+
       // Apply dynamic tagging using the new tagging service
       await _applyDynamicTagging(recipe.id, recipe);
-      
+
       return true;
     } catch (e) {
       print('Error updating recipe: $e');
@@ -684,8 +681,10 @@ class FirebaseService {
   // Get all tags
   static Future<List<Tag>> getAllTags() async {
     try {
-      final querySnapshot =
-          await _firestore.collection(_tagsCollection).orderBy('tag_name').get();
+      final querySnapshot = await _firestore
+          .collection(_tagsCollection)
+          .orderBy('tag_name')
+          .get();
 
       return querySnapshot.docs
           .map((doc) => Tag.fromJson({...doc.data(), 'id': doc.id}))
@@ -717,8 +716,9 @@ class FirebaseService {
         name: tagName,
       );
 
-      final docRef = await _firestore.collection(_tagsCollection).add(newTag.toJson());
-      
+      final docRef =
+          await _firestore.collection(_tagsCollection).add(newTag.toJson());
+
       print('✅ Created new tag: $tagName with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
@@ -728,7 +728,8 @@ class FirebaseService {
   }
 
   // Assign tags to a recipe
-  static Future<bool> assignTagsToRecipe(String recipeId, List<String> tagNames) async {
+  static Future<bool> assignTagsToRecipe(
+      String recipeId, List<String> tagNames) async {
     try {
       // Remove existing recipe tags first
       await _removeRecipeTagsForRecipe(recipeId);
@@ -753,7 +754,8 @@ class FirebaseService {
         }
       }
 
-      print('✅ Successfully assigned ${tagNames.length} tags to recipe: $recipeId');
+      print(
+          '✅ Successfully assigned ${tagNames.length} tags to recipe: $recipeId');
       return true;
     } catch (e) {
       print('Error assigning tags to recipe: $e');
@@ -776,7 +778,8 @@ class FirebaseService {
 
       if (querySnapshot.docs.isNotEmpty) {
         await batch.commit();
-        print('🗑️ Removed ${querySnapshot.docs.length} existing recipe tags for recipe: $recipeId');
+        print(
+            '🗑️ Removed ${querySnapshot.docs.length} existing recipe tags for recipe: $recipeId');
       }
     } catch (e) {
       print('Error removing recipe tags: $e');
@@ -800,7 +803,8 @@ class FirebaseService {
       // Get tag names for these IDs
       List<String> tagNames = [];
       for (final tagId in tagIds) {
-        final tagDoc = await _firestore.collection(_tagsCollection).doc(tagId).get();
+        final tagDoc =
+            await _firestore.collection(_tagsCollection).doc(tagId).get();
         if (tagDoc.exists && tagDoc.data() != null) {
           final tag = Tag.fromJson({...tagDoc.data()!, 'id': tagDoc.id});
           tagNames.add(tag.name);
@@ -858,7 +862,8 @@ class FirebaseService {
   // ==================== UTILITY METHODS ====================
 
   // Helper method to apply dynamic tagging to a recipe
-  static Future<void> _applyDynamicTagging(String recipeId, Recipe recipe) async {
+  static Future<void> _applyDynamicTagging(
+      String recipeId, Recipe recipe) async {
     try {
       // Apply dynamic tagging based on recipe characteristics
       await RecipeTaggingService.applyTagsToRecipe(
@@ -919,12 +924,50 @@ class FirebaseService {
   }
 
   /// Sign in with email and password
-  static Future<UserCredential> signInWithEmailAndPassword(String email, String password) async {
-    return await _auth.signInWithEmailAndPassword(email: email, password: password);
+  static Future<UserCredential> signInWithEmailAndPassword(
+      String email, String password) async {
+    return await _auth.signInWithEmailAndPassword(
+        email: email, password: password);
   }
 
   /// Create user with email and password
-  static Future<UserCredential> createUserWithEmailAndPassword(String email, String password) async {
-    return await _auth.createUserWithEmailAndPassword(email: email, password: password);
+  static Future<UserCredential> createUserWithEmailAndPassword(
+      String email, String password) async {
+    return await _auth.createUserWithEmailAndPassword(
+        email: email, password: password);
+  }
+
+  static Stream<List<Recipe>> streamSavedRecipesForUser(String userId) async* {
+    final savedRecipesStream = _firestore
+        .collection(_savedRecipesCollection)
+        .where('userId', isEqualTo: userId)
+        .snapshots();
+
+    await for (final snapshot in savedRecipesStream) {
+      final recipeIds = snapshot.docs
+          .map((doc) => SavedRecipe.fromJson(doc.data()).recipeId)
+          .toList();
+
+      if (recipeIds.isEmpty) {
+        yield [];
+        continue;
+      }
+
+      // Firestore 'whereIn' limit is 10
+      List<Recipe> allRecipes = [];
+      for (int i = 0; i < recipeIds.length; i += 10) {
+        final batch = recipeIds.skip(i).take(10).toList();
+        final recipesSnapshot = await _firestore
+            .collection(_recipesCollection)
+            .where('id', whereIn: batch)
+            .get();
+
+        final recipes = recipesSnapshot.docs
+            .map((doc) => Recipe.fromJson(doc.data()))
+            .toList();
+        allRecipes.addAll(recipes);
+      }
+      yield allRecipes;
+    }
   }
 }

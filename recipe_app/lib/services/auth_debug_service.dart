@@ -58,7 +58,8 @@ class AuthDebugService {
 
       final loggedInAfterLogout = UserSessionService.getCurrentUser() != null;
       print('   Still logged in: $loggedInAfterLogout');
-      print('${!loggedInAfterLogout ? '✅ Logout: SUCCESS' : '❌ Logout: FAILED'}');
+      print(
+          '${!loggedInAfterLogout ? '✅ Logout: SUCCESS' : '❌ Logout: FAILED'}');
 
       print('\n🎉 Simulated Auth Debug Test Completed!');
     } catch (e) {

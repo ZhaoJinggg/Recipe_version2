@@ -80,9 +80,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadRecipes() {
     // In a real app, this would fetch from an API
     setState(() {
-      _allRecipes = MockDataService.getAllRecipes();
+      _allRecipes = MockDataService.getAllRecipes().cast<Recipe>();
       _recipes = _allRecipes;
-      _dailyInspirationRecipes = MockDataService.getDailyInspirationRecipes();
+      _dailyInspirationRecipes =
+          MockDataService.getDailyInspirationRecipes().cast<Recipe>();
     });
   }
 

@@ -3,7 +3,6 @@ import 'package:recipe_app/services/firebase_service.dart';
 /// Service for dynamic recipe tagging using Firestore
 /// Replaces hardcoded tag logic with dynamic database operations
 class RecipeTaggingService {
-  
   /// Automatically assign tags to a recipe based on its characteristics
   /// This replaces hardcoded tagging logic with dynamic Firestore operations
   static Future<List<String>> generateTagsForRecipe({
@@ -33,13 +32,15 @@ class RecipeTaggingService {
 
     // Ingredient-based tags (check for common dietary indicators)
     final ingredientList = ingredients.map((i) => i.toLowerCase()).toList();
-    
-    if (_containsAny(ingredientList, ['chicken', 'beef', 'pork', 'lamb', 'fish', 'salmon', 'tuna'])) {
+
+    if (_containsAny(ingredientList,
+        ['chicken', 'beef', 'pork', 'lamb', 'fish', 'salmon', 'tuna'])) {
       // Has meat/fish
     } else if (_containsAny(ingredientList, ['tofu', 'tempeh', 'seitan'])) {
       tags.add('Vegan');
       tags.add('Vegetarian');
-    } else if (_containsAny(ingredientList, ['cheese', 'milk', 'butter', 'cream', 'egg'])) {
+    } else if (_containsAny(
+        ingredientList, ['cheese', 'milk', 'butter', 'cream', 'egg'])) {
       tags.add('Vegetarian');
     } else {
       // Might be vegan if no obvious animal products
@@ -48,39 +49,77 @@ class RecipeTaggingService {
     }
 
     // Seafood detection
-    if (_containsAny(ingredientList, ['fish', 'salmon', 'tuna', 'shrimp', 'crab', 'lobster', 'prawn', 'scallop'])) {
+    if (_containsAny(ingredientList, [
+      'fish',
+      'salmon',
+      'tuna',
+      'shrimp',
+      'crab',
+      'lobster',
+      'prawn',
+      'scallop'
+    ])) {
       tags.add('Seafood');
     }
 
     // Spicy detection
-    if (_containsAny(ingredientList, ['chili', 'pepper', 'jalapeño', 'sriracha', 'tabasco', 'curry', 'paprika', 'cayenne'])) {
+    if (_containsAny(ingredientList, [
+      'chili',
+      'pepper',
+      'jalapeño',
+      'sriracha',
+      'tabasco',
+      'curry',
+      'paprika',
+      'cayenne'
+    ])) {
       tags.add('Spicy');
     }
 
     // Healthy detection
-    if (_containsAny(ingredientList, ['quinoa', 'kale', 'spinach', 'avocado', 'chia', 'salmon', 'olive oil', 'nuts'])) {
+    if (_containsAny(ingredientList, [
+      'quinoa',
+      'kale',
+      'spinach',
+      'avocado',
+      'chia',
+      'salmon',
+      'olive oil',
+      'nuts'
+    ])) {
       tags.add('Healthy');
     }
 
     // Regional cuisine detection based on ingredients
-    if (_containsAny(ingredientList, ['soy sauce', 'ginger', 'sesame', 'rice wine', 'bok choy'])) {
+    if (_containsAny(ingredientList,
+        ['soy sauce', 'ginger', 'sesame', 'rice wine', 'bok choy'])) {
       tags.add('Chinese');
     }
-    
-    if (_containsAny(ingredientList, ['gochujang', 'kimchi', 'korean', 'sesame oil'])) {
+
+    if (_containsAny(
+        ingredientList, ['gochujang', 'kimchi', 'korean', 'sesame oil'])) {
       tags.add('Korean');
     }
-    
-    if (_containsAny(ingredientList, ['basil', 'oregano', 'parmesan', 'mozzarella', 'olive oil', 'balsamic'])) {
+
+    if (_containsAny(ingredientList, [
+      'basil',
+      'oregano',
+      'parmesan',
+      'mozzarella',
+      'olive oil',
+      'balsamic'
+    ])) {
       tags.add('Italian');
     }
-    
-    if (_containsAny(ingredientList, ['coconut milk', 'lemongrass', 'fish sauce', 'thai', 'pandan'])) {
+
+    if (_containsAny(ingredientList,
+        ['coconut milk', 'lemongrass', 'fish sauce', 'thai', 'pandan'])) {
       tags.add('Malaysian');
     }
 
     // Gluten-free detection (basic check)
-    if (!_containsAny(ingredientList, ['flour', 'wheat', 'pasta', 'bread', 'soy sauce']) &&
+    if (!_containsAny(ingredientList,
+            ['flour', 'wheat', 'pasta', 'bread', 'soy sauce']) &&
         _containsAny(ingredientList, ['rice', 'quinoa', 'gluten-free'])) {
       tags.add('Gluten-Free');
     }
@@ -90,8 +129,8 @@ class RecipeTaggingService {
 
   /// Check if a list contains any of the specified items
   static bool _containsAny(List<String> list, List<String> targets) {
-    return targets.any((target) => 
-        list.any((item) => item.contains(target.toLowerCase())));
+    return targets.any(
+        (target) => list.any((item) => item.contains(target.toLowerCase())));
   }
 
   /// Apply tags to a recipe using the dynamic tagging system
@@ -174,7 +213,8 @@ class RecipeTaggingService {
       bool firstTag = true;
 
       for (final tagName in tagNames) {
-        final recipesForTag = await FirebaseService.getRecipesByTagName(tagName);
+        final recipesForTag =
+            await FirebaseService.getRecipesByTagName(tagName);
         final idsForTag = recipesForTag.map((r) => r.id).toSet();
 
         if (firstTag) {
@@ -184,7 +224,7 @@ class RecipeTaggingService {
           // Intersection - recipes that have ALL tags
           recipeIds = recipeIds.intersection(idsForTag);
         }
-        
+
         // If no recipes have all tags so far, no point continuing
         if (recipeIds.isEmpty) break;
       }
@@ -195,4 +235,4 @@ class RecipeTaggingService {
       return [];
     }
   }
-} 
+}

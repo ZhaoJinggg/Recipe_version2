@@ -18,18 +18,23 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isSearching = false;
   final List<String> _recentSearches = ['Pasta', 'Chicken', 'Salad', 'Dessert'];
   final List<String> _popularTags = [
-    'Healthy', 'Quick & Easy', 'Breakfast', 'Lunch',
-    'Dinner', 'Vegetarian', 'Desserts', 'Soups'
+    'Healthy',
+    'Quick & Easy',
+    'Breakfast',
+    'Lunch',
+    'Dinner',
+    'Vegetarian',
+    'Desserts',
+    'Soups'
   ];
 
   static const _sectionTitleStyle = TextStyle(
-    fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary
-  );
+      fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary);
 
   @override
   void initState() {
     super.initState();
-    _allRecipes = MockDataService.getAllRecipes();
+    _allRecipes = MockDataService.getAllRecipes().cast<Recipe>();
   }
 
   @override
@@ -46,9 +51,9 @@ class _SearchScreenState extends State<SearchScreen> {
       final lowercaseQuery = query.toLowerCase();
       _searchResults = _allRecipes.where((recipe) {
         return recipe.title.toLowerCase().contains(lowercaseQuery) ||
-        recipe.category.toLowerCase().contains(lowercaseQuery) ||
-        recipe.ingredients.any((ingredient) => 
-        ingredient.toLowerCase().contains(lowercaseQuery));
+            recipe.category.toLowerCase().contains(lowercaseQuery) ||
+            recipe.ingredients.any((ingredient) =>
+                ingredient.toLowerCase().contains(lowercaseQuery));
       }).toList();
 
       if (!_recentSearches.contains(query)) {
@@ -59,34 +64,37 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _clearSearch() => setState(() {
-    _searchController.clear();
-    _searchResults = [];
-    _isSearching = false;
-  });
+        _searchController.clear();
+        _searchResults = [];
+        _isSearching = false;
+      });
 
-  Widget _buildSearchField(){
+  Widget _buildSearchField() {
     return Container(
-    height: 45,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [BoxShadow(
-      color: Colors.grey.withOpacity(0.1),
-      blurRadius: 5, offset: const Offset(0, 2))],
-    ),
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 5,
+              offset: const Offset(0, 2))
+        ],
+      ),
       child: TextField(
         controller: _searchController,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
-          hintText: 'Search recipes, ingredients...',
-          prefixIcon: const Icon(Icons.search, color: AppColors.primary),
-          suffixIcon: _searchController.text.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.clear, color: AppColors.primary),
-                onPressed: _clearSearch)
-            : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12)),
+            hintText: 'Search recipes, ingredients...',
+            prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: AppColors.primary),
+                    onPressed: _clearSearch)
+                : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12)),
         onChanged: _performSearch,
         onSubmitted: _performSearch,
       ),
@@ -94,63 +102,74 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildTagChip(String label, {IconData? icon}) => ActionChip(
-    backgroundColor: AppColors.primary.withOpacity(0.1),
-    label: Text(label),
-    onPressed: () {
-      _searchController.text = label;
-      _performSearch(label);
-    },
-    avatar: icon != null ? Icon(icon, size: 16, color: AppColors.primary) : null,
-  );
+        backgroundColor: AppColors.primary.withOpacity(0.1),
+        label: Text(label),
+        onPressed: () {
+          _searchController.text = label;
+          _performSearch(label);
+        },
+        avatar: icon != null
+            ? Icon(icon, size: 16, color: AppColors.primary)
+            : null,
+      );
 
-  Widget _buildSectionTitle(String title) => Text(title, style: _sectionTitleStyle);
+  Widget _buildSectionTitle(String title) =>
+      Text(title, style: _sectionTitleStyle);
 
   Widget _buildNoResults() => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.search_off, size: 80, color: AppColors.primary.withOpacity(0.5)),
-        const SizedBox(height: 16),
-        Text('No results found', style: _sectionTitleStyle),
-        const SizedBox(height: 8),
-        Text('Try different keywords or filters',
-          style: TextStyle(fontSize: 16, color: AppColors.textPrimary.withOpacity(0.7))),
-      ],
-    ),
-  );
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off,
+                size: 80, color: AppColors.primary.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text('No results found', style: _sectionTitleStyle),
+            const SizedBox(height: 8),
+            Text('Try different keywords or filters',
+                style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.textPrimary.withOpacity(0.7))),
+          ],
+        ),
+      );
 
   Widget _buildCategoryCard(String title, IconData icon) => GestureDetector(
-    onTap: () {
-      _searchController.text = title;
-      _performSearch(title);
-    },
-    child: Container(
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 36, color: AppColors.primary),
-          const SizedBox(height: 8),
-          Text(title, style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-        ],
-      ),
-    ),
-  );
+        onTap: () {
+          _searchController.text = title;
+          _performSearch(title);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 36, color: AppColors.primary),
+              const SizedBox(height: 8),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
+      );
 
-  Widget _buildSearchResults() => _searchResults.isEmpty ? _buildNoResults() : ListView.builder(
-    padding: const EdgeInsets.all(16),
-    itemCount: _searchResults.length,
-    itemBuilder: (context, index) => RecipeCard(
-      recipe: _searchResults[index],
-      onTap: () => Navigator.pushNamed(
-        context, '/recipe', arguments: {'recipeId': _searchResults[index].id}),
-    ),
-  );
+  Widget _buildSearchResults() => _searchResults.isEmpty
+      ? _buildNoResults()
+      : ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: _searchResults.length,
+          itemBuilder: (context, index) => RecipeCard(
+            recipe: _searchResults[index],
+            onTap: () => Navigator.pushNamed(context, '/recipe',
+                arguments: {'recipeId': _searchResults[index].id}),
+          ),
+        );
 
-  Widget _buildRecentSearches(){
+  Widget _buildRecentSearches() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -161,34 +180,39 @@ class _SearchScreenState extends State<SearchScreen> {
             TextButton(
               onPressed: () => setState(() => _recentSearches.clear()),
               child: const Text('Clear All',
-                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: AppColors.primary, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
         const SizedBox(height: 12),
         Wrap(
-          spacing: 8, runSpacing: 8,
-          children: _recentSearches.map((s) => _buildTagChip(s, icon: Icons.history)).toList()),
+            spacing: 8,
+            runSpacing: 8,
+            children: _recentSearches
+                .map((s) => _buildTagChip(s, icon: Icons.history))
+                .toList()),
         const SizedBox(height: 24),
       ],
     );
   }
 
-  Widget _buildPopularTags(){
+  Widget _buildPopularTags() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Popular Tags'),
         const SizedBox(height: 12),
         Wrap(
-          spacing: 8, runSpacing: 8,
-          children: _popularTags.map((t) => _buildTagChip(t)).toList()),
+            spacing: 8,
+            runSpacing: 8,
+            children: _popularTags.map((t) => _buildTagChip(t)).toList()),
         const SizedBox(height: 24),
       ],
     );
   }
 
-  Widget _buildCategories(){
+  Widget _buildCategories() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -212,31 +236,31 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildSearchSuggestions(){
+  Widget _buildSearchSuggestions() {
     return SingleChildScrollView(
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_recentSearches.isNotEmpty) _buildRecentSearches(),
-        _buildPopularTags(),
-        _buildCategories(),
-      ],
-    ),
-  );
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_recentSearches.isNotEmpty) _buildRecentSearches(),
+          _buildPopularTags(),
+          _buildCategories(),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-  return Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
         title: _buildSearchField(),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/')),
+            icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+            onPressed: () => Navigator.pushReplacementNamed(context, '/')),
       ),
       body: _isSearching ? _buildSearchResults() : _buildSearchSuggestions(),
       bottomNavigationBar: CustomBottomNavBar(

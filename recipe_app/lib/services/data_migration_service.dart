@@ -52,7 +52,8 @@ class DataMigrationService {
       _hasRunMigration = true;
       print('🎉 Data migration completed successfully!');
       print('📊 Check Firebase Console to verify data');
-      print('🔗 https://console.firebase.google.com/project/recipe-app-6f86b/firestore');
+      print(
+          '🔗 https://console.firebase.google.com/project/recipe-app-6f86b/firestore');
 
       return true;
     } catch (e) {
@@ -71,7 +72,8 @@ class DataMigrationService {
         phone: '+60123456789',
         gender: 'Female',
         dateOfBirth: '1990-05-15',
-        bio: 'Passionate chef specializing in Italian and Mediterranean cuisine',
+        bio:
+            'Passionate chef specializing in Italian and Mediterranean cuisine',
         profileImageUrl: 'assets/images/profile1.jpg',
       ),
       AppUser.User(
@@ -613,13 +615,13 @@ class DataMigrationService {
   static Future<bool> migrateExistingRecipesToDynamicTagging() async {
     try {
       print('🔄 Starting migration of existing recipes to dynamic tagging...');
-      
+
       // Get all existing recipes
       final existingRecipes = await FirebaseService.getAllRecipes();
-      
+
       for (final recipe in existingRecipes) {
         print('🔄 Migrating recipe: ${recipe.title}');
-        
+
         // Apply dynamic tagging to existing recipe
         await RecipeTaggingService.applyTagsToRecipe(
           recipeId: recipe.id,
@@ -631,11 +633,12 @@ class DataMigrationService {
           description: recipe.description,
           additionalTags: recipe.tags, // Preserve any existing manual tags
         );
-        
+
         print('✅ Migrated recipe: ${recipe.title}');
       }
-      
-      print('🎉 Successfully migrated ${existingRecipes.length} recipes to dynamic tagging');
+
+      print(
+          '🎉 Successfully migrated ${existingRecipes.length} recipes to dynamic tagging');
       return true;
     } catch (e) {
       print('❌ Error migrating existing recipes: $e');
@@ -646,5 +649,14 @@ class DataMigrationService {
   /// Reset migration flag (for testing purposes)
   static void resetMigrationFlag() {
     _hasRunMigration = false;
+  }
+
+  /// Re-import all mock recipes into Firestore, ensuring no duplicates
+  static Future<void> reimportMockRecipes() async {
+    final recipes = MockDataService.getAllRecipes();
+    for (final recipe in recipes) {
+      await FirebaseService.createRecipe(recipe);
+    }
+    print('✅ Re-imported all mock recipes to Firestore');
   }
 }
