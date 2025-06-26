@@ -9,15 +9,14 @@ class Tag {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'name': name,
+      'tag_name': name,
     };
   }
 
   factory Tag.fromJson(Map<String, dynamic> json) {
     return Tag(
       id: json['id'] ?? '',
-      name: json['name'] ?? '',
+      name: json['tag_name'] ?? '',
     );
   }
 }
@@ -35,17 +34,16 @@ class RecipeTag {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'recipeId': recipeId,
-      'tagId': tagId,
+      'recipe_id': recipeId,
+      'tag_id': tagId,
     };
   }
 
   factory RecipeTag.fromJson(Map<String, dynamic> json) {
     return RecipeTag(
       id: json['id'] ?? '',
-      recipeId: json['recipeId'] ?? '',
-      tagId: json['tagId'] ?? '',
+      recipeId: json['recipe_id'] ?? '',
+      tagId: json['tag_id'] ?? '',
     );
   }
 }

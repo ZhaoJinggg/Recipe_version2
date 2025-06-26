@@ -10,6 +10,7 @@ import 'package:recipe_app/models/ingredient.dart';
 import 'package:recipe_app/models/tag.dart';
 import 'package:recipe_app/models/saved_recipe.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:recipe_app/services/recipe_tagging_service.dart';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -146,6 +147,11 @@ class FirebaseService {
 
       // Update the recipe with the generated ID
       await docRef.update({'id': docRef.id});
+      
+      // Apply dynamic tagging using the new tagging service
+      // This replaces hardcoded tag assignment with intelligent auto-tagging
+      await _applyDynamicTagging(docRef.id, recipe);
+      
       return docRef.id;
     } catch (e) {
       print('Error creating recipe: $e');
@@ -229,6 +235,10 @@ class FirebaseService {
           .collection(_recipesCollection)
           .doc(recipe.id)
           .update(recipe.toJson());
+      
+      // Apply dynamic tagging using the new tagging service
+      await _applyDynamicTagging(recipe.id, recipe);
+      
       return true;
     } catch (e) {
       print('Error updating recipe: $e');
@@ -664,7 +674,6 @@ class FirebaseService {
     try {
       final docRef =
           await _firestore.collection(_tagsCollection).add(tag.toJson());
-      await docRef.update({'id': docRef.id});
       return docRef.id;
     } catch (e) {
       print('Error creating tag: $e');
@@ -676,16 +685,200 @@ class FirebaseService {
   static Future<List<Tag>> getAllTags() async {
     try {
       final querySnapshot =
-          await _firestore.collection(_tagsCollection).orderBy('name').get();
+          await _firestore.collection(_tagsCollection).orderBy('tag_name').get();
 
-      return querySnapshot.docs.map((doc) => Tag.fromJson(doc.data())).toList();
+      return querySnapshot.docs
+          .map((doc) => Tag.fromJson({...doc.data(), 'id': doc.id}))
+          .toList();
     } catch (e) {
       print('Error getting tags: $e');
       return [];
     }
   }
 
+  // Get tag ID by tag name, create if doesn't exist
+  static Future<String?> getOrCreateTagId(String tagName) async {
+    try {
+      // First, try to find existing tag by name
+      final querySnapshot = await _firestore
+          .collection(_tagsCollection)
+          .where('tag_name', isEqualTo: tagName)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // Tag exists, return its ID
+        return querySnapshot.docs.first.id;
+      }
+
+      // Tag doesn't exist, create it
+      final newTag = Tag(
+        id: '', // Will be auto-generated
+        name: tagName,
+      );
+
+      final docRef = await _firestore.collection(_tagsCollection).add(newTag.toJson());
+      
+      print('✅ Created new tag: $tagName with ID: ${docRef.id}');
+      return docRef.id;
+    } catch (e) {
+      print('Error getting or creating tag: $e');
+      return null;
+    }
+  }
+
+  // Assign tags to a recipe
+  static Future<bool> assignTagsToRecipe(String recipeId, List<String> tagNames) async {
+    try {
+      // Remove existing recipe tags first
+      await _removeRecipeTagsForRecipe(recipeId);
+
+      // Get or create tag IDs for each tag name
+      for (final tagName in tagNames) {
+        final tagId = await getOrCreateTagId(tagName);
+        if (tagId != null) {
+          // Create recipe-tag relationship
+          final recipeTag = RecipeTag(
+            id: '', // Will be auto-generated
+            recipeId: recipeId,
+            tagId: tagId,
+          );
+
+          final docRef = await _firestore
+              .collection(_recipeTagsCollection)
+              .add(recipeTag.toJson());
+          await docRef.update({'id': docRef.id});
+        } else {
+          print('⚠️ Failed to get/create tag ID for: $tagName');
+        }
+      }
+
+      print('✅ Successfully assigned ${tagNames.length} tags to recipe: $recipeId');
+      return true;
+    } catch (e) {
+      print('Error assigning tags to recipe: $e');
+      return false;
+    }
+  }
+
+  // Helper method to remove existing recipe tags for a recipe
+  static Future<void> _removeRecipeTagsForRecipe(String recipeId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_recipeTagsCollection)
+          .where('recipe_id', isEqualTo: recipeId)
+          .get();
+
+      final batch = _firestore.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      if (querySnapshot.docs.isNotEmpty) {
+        await batch.commit();
+        print('🗑️ Removed ${querySnapshot.docs.length} existing recipe tags for recipe: $recipeId');
+      }
+    } catch (e) {
+      print('Error removing recipe tags: $e');
+    }
+  }
+
+  // Get tag names for a recipe
+  static Future<List<String>> getTagNamesForRecipe(String recipeId) async {
+    try {
+      final recipeTagsSnapshot = await _firestore
+          .collection(_recipeTagsCollection)
+          .where('recipe_id', isEqualTo: recipeId)
+          .get();
+
+      final tagIds = recipeTagsSnapshot.docs
+          .map((doc) => RecipeTag.fromJson(doc.data()).tagId)
+          .toList();
+
+      if (tagIds.isEmpty) return [];
+
+      // Get tag names for these IDs
+      List<String> tagNames = [];
+      for (final tagId in tagIds) {
+        final tagDoc = await _firestore.collection(_tagsCollection).doc(tagId).get();
+        if (tagDoc.exists && tagDoc.data() != null) {
+          final tag = Tag.fromJson({...tagDoc.data()!, 'id': tagDoc.id});
+          tagNames.add(tag.name);
+        }
+      }
+
+      return tagNames;
+    } catch (e) {
+      print('Error getting tag names for recipe: $e');
+      return [];
+    }
+  }
+
+  // Get recipes by tag name
+  static Future<List<Recipe>> getRecipesByTagName(String tagName) async {
+    try {
+      // First get the tag ID
+      final tagId = await getOrCreateTagId(tagName);
+      if (tagId == null) return [];
+
+      // Get recipe IDs that have this tag
+      final recipeTagsSnapshot = await _firestore
+          .collection(_recipeTagsCollection)
+          .where('tag_id', isEqualTo: tagId)
+          .get();
+
+      final recipeIds = recipeTagsSnapshot.docs
+          .map((doc) => RecipeTag.fromJson(doc.data()).recipeId)
+          .toList();
+
+      if (recipeIds.isEmpty) return [];
+
+      // Get recipes for these IDs (handling Firestore's 10-item limit for whereIn)
+      List<Recipe> allRecipes = [];
+      for (int i = 0; i < recipeIds.length; i += 10) {
+        final batch = recipeIds.skip(i).take(10).toList();
+        final recipesSnapshot = await _firestore
+            .collection(_recipesCollection)
+            .where('id', whereIn: batch)
+            .get();
+
+        final recipes = recipesSnapshot.docs
+            .map((doc) => Recipe.fromJson(doc.data()))
+            .toList();
+        allRecipes.addAll(recipes);
+      }
+
+      return allRecipes;
+    } catch (e) {
+      print('Error getting recipes by tag name: $e');
+      return [];
+    }
+  }
+
   // ==================== UTILITY METHODS ====================
+
+  // Helper method to apply dynamic tagging to a recipe
+  static Future<void> _applyDynamicTagging(String recipeId, Recipe recipe) async {
+    try {
+      // Apply dynamic tagging based on recipe characteristics
+      await RecipeTaggingService.applyTagsToRecipe(
+        recipeId: recipeId,
+        category: recipe.category,
+        prepTimeMinutes: recipe.prepTimeMinutes,
+        difficultyLevel: recipe.difficultyLevel,
+        ingredients: recipe.ingredients,
+        title: recipe.title,
+        description: recipe.description,
+        additionalTags: recipe.tags, // Include any manually set tags
+      );
+    } catch (e) {
+      print('Error applying dynamic tagging: $e');
+      // Fallback to manual tag assignment if dynamic tagging fails
+      if (recipe.tags.isNotEmpty) {
+        await assignTagsToRecipe(recipeId, recipe.tags);
+      }
+    }
+  }
 
   // Generate a unique ID
   static String generateId() {

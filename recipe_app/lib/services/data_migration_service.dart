@@ -1,41 +1,62 @@
 import 'package:recipe_app/services/firebase_service.dart';
+import 'package:recipe_app/services/user_session_service.dart';
+import 'package:recipe_app/services/mock_data_service.dart';
+import 'package:recipe_app/services/recipe_tagging_service.dart';
+import 'package:recipe_app/models/user.dart' as AppUser;
 import 'package:recipe_app/models/recipe.dart';
-import 'package:recipe_app/models/user.dart';
 import 'package:recipe_app/models/post.dart';
-import 'package:recipe_app/models/grocery_item.dart';
 import 'package:recipe_app/models/ingredient.dart';
 import 'package:recipe_app/models/tag.dart';
+import 'package:recipe_app/models/grocery_item.dart';
 
 class DataMigrationService {
-  // Migrate all mock data to Firebase
-  static Future<bool> migrateAllData() async {
+  static bool _hasRunMigration = false;
+
+  /// Run complete data migration from mock service to Firebase
+  static Future<bool> runMigration() async {
+    if (_hasRunMigration) {
+      print('⚠️ Data migration has already been run');
+      return true;
+    }
+
+    print('🚀 Starting data migration to Firebase...');
+
     try {
-      print('Starting data migration...');
+      // Initialize Firebase first
+      final firebaseInitialized = await FirebaseService.initialize();
+      if (!firebaseInitialized) {
+        print('❌ Failed to initialize Firebase');
+        return false;
+      }
+
+      // Migrate ingredients and tags first (dependencies)
+      await _migrateIngredientsAndTags();
+      print('✅ Ingredients and tags migrated successfully');
 
       // Migrate users
       await _migrateUsers();
-      print('Users migrated successfully');
+      print('✅ Users migrated successfully');
 
-      // Migrate recipes
-      await _migrateRecipes();
-      print('Recipes migrated successfully');
+      // Migrate recipes with dynamic tagging
+      await _migrateRecipesWithDynamicTagging();
+      print('✅ Recipes migrated with dynamic tagging successfully');
 
       // Migrate posts
       await _migratePosts();
-      print('Posts migrated successfully');
-
-      // Migrate ingredients and tags
-      await _migrateIngredientsAndTags();
-      print('Ingredients and tags migrated successfully');
+      print('✅ Posts migrated successfully');
 
       // Add sample grocery items
       await _addSampleGroceryItems();
-      print('Sample grocery items added successfully');
+      print('✅ Sample grocery items added successfully');
 
-      print('Data migration completed successfully!');
+      _hasRunMigration = true;
+      print('🎉 Data migration completed successfully!');
+      print('📊 Check Firebase Console to verify data');
+      print('🔗 https://console.firebase.google.com/project/recipe-app-6f86b/firestore');
+
       return true;
     } catch (e) {
-      print('Error during data migration: $e');
+      print('❌ Data migration failed: $e');
       return false;
     }
   }
@@ -43,41 +64,35 @@ class DataMigrationService {
   // Migrate users
   static Future<void> _migrateUsers() async {
     final users = [
-      User(
-        id: 'current_user',
-        name: 'Teresa',
-        email: 'teresa@example.com',
-        profileImageUrl: 'assets/images/profile1.jpg',
-        bio:
-            'Passionate home cook who loves experimenting with flavors from around the world. Always on the lookout for new recipes to try and share with the community. Specializing in healthy, quick meals that don\'t compromise on taste.',
-        phone: '+1 234 567 8900',
-        dateOfBirth: '15 March 1995',
-        gender: 'Female',
-        favoriteRecipes: ['1'],
-      ),
-      User(
+      AppUser.User(
         id: 'user1',
         name: 'Chef Teresa',
-        email: 'chef.teresa@example.com',
-        profileImageUrl: 'assets/images/profile1.jpg',
-        bio: 'Professional chef specializing in Italian cuisine',
+        email: 'teresa@chef.com',
+        phone: '+60123456789',
         gender: 'Female',
+        dateOfBirth: '1990-05-15',
+        bio: 'Passionate chef specializing in Italian and Mediterranean cuisine',
+        profileImageUrl: 'assets/images/profile1.jpg',
       ),
-      User(
+      AppUser.User(
         id: 'user2',
         name: 'Chef Mike',
-        email: 'chef.mike@example.com',
-        profileImageUrl: 'assets/images/profile4.jpg',
-        bio: 'Culinary expert with passion for Asian fusion',
+        email: 'mike@chef.com',
+        phone: '+60123456790',
         gender: 'Male',
+        dateOfBirth: '1985-08-22',
+        bio: 'Expert in Asian fusion and traditional Chinese cooking',
+        profileImageUrl: 'assets/images/profile4.jpg',
       ),
-      User(
+      AppUser.User(
         id: 'user3',
         name: 'Chef Sophia',
-        email: 'chef.sophia@example.com',
-        profileImageUrl: 'assets/images/profile2.jpg',
-        bio: 'Dessert specialist and pastry chef',
+        email: 'sophia@chef.com',
+        phone: '+60123456791',
         gender: 'Female',
+        dateOfBirth: '1992-12-10',
+        bio: 'Dessert specialist and baking enthusiast',
+        profileImageUrl: 'assets/images/profile2.jpg',
       ),
     ];
 
@@ -86,8 +101,9 @@ class DataMigrationService {
     }
   }
 
-  // Migrate recipes with updated model structure
-  static Future<void> _migrateRecipes() async {
+  // Migrate recipes using the new dynamic tagging system
+  static Future<void> _migrateRecipesWithDynamicTagging() async {
+    // Create base recipes without hardcoded tags - the dynamic system will assign them
     final recipes = [
       Recipe(
         id: '1',
@@ -97,305 +113,300 @@ class DataMigrationService {
         rating: 4.5,
         prepTimeMinutes: 30,
         servings: 4,
-        calories: 656,
+        calories: 400,
         ingredients: [
-          '100g pancetta',
-          '50g pecorino cheese',
-          '50g parmesan',
-          '3 large eggs',
           '350g spaghetti',
-          '2 plump garlic cloves',
-          '50g unsalted butter',
-          'sea salt and freshly ground black pepper',
+          '100g pancetta',
+          '4 large eggs',
+          '50g pecorino cheese',
+          '50g parmesan cheese',
+          '2 cloves garlic',
+          'Black pepper',
+          'Salt',
         ],
         directions: [
-          'Put a large saucepan of water on to boil.',
-          'Finely chop the 100g pancetta, having first removed any rind.',
-          'Beat the 3 large eggs in a medium bowl and season with black pepper.',
-          'Add 1 tsp salt to the boiling water, add 350g spaghetti and cook for 10 minutes.',
-          'While the spaghetti is cooking, fry the pancetta with the garlic.',
-          'Mix the eggs and cheese together.',
-          'Take the pan off the heat and quickly pour in the eggs and cheese.',
-          'Season with salt if needed and serve immediately.',
+          'Cook spaghetti according to package directions',
+          'Fry pancetta until crispy',
+          'Whisk eggs with grated cheeses',
+          'Combine hot pasta with pancetta',
+          'Add egg mixture off heat',
+          'Toss quickly to create creamy sauce',
+          'Season with black pepper',
         ],
         nutritions: [
-          'Kcal 656KCal',
-          'Fat 30.03g',
-          'Protein 29g',
-          'Carbs 66g',
+          'Total Fat: 18g',
+          'Protein: 20g',
+          'Carbohydrates: 45g',
         ],
         authorId: 'user1',
         authorName: 'Chef Teresa',
-        description:
-            'Classic Italian pasta dish with eggs, cheese, and pancetta',
-        difficultyLevel: 'Medium',
-        fat: 30.03,
-        protein: 29.0,
-        carbs: 66.0,
-        tags: ['Italian', 'Pasta', 'Quick'],
+        description: 'Classic Italian pasta dish with creamy egg sauce',
+        difficultyLevel: 'Easy',
+        fat: 18.0,
+        protein: 20.0,
+        carbs: 45.0,
+        tags: [], // Let dynamic tagging handle this
       ),
       Recipe(
         id: '2',
         title: 'Balsamic Bruschetta',
-        category: 'Appetizers',
+        category: 'Appetizer',
         image: 'assets/images/balsamic_bruschetta.png',
         rating: 4.8,
         prepTimeMinutes: 20,
-        servings: 8,
-        calories: 197,
+        servings: 6,
+        calories: 150,
         ingredients: [
-          '1 loaf French bread, cut into ¼-inch slices',
-          '1 tablespoon extra-virgin olive oil',
-          '8 roma (plum) tomatoes, diced',
-          '⅓ cup chopped fresh basil',
-          '1 ounce Parmesan cheese, freshly grated',
-          '2 cloves garlic, minced',
-          '1 tablespoon good quality balsamic vinegar',
-          '¼ teaspoon kosher salt',
-          '¼ teaspoon freshly ground black pepper',
+          '6 slices of baguette',
+          '3 large tomatoes',
+          '2 cloves garlic',
+          '1/4 cup fresh basil',
+          '2 tbsp olive oil',
+          '1 tbsp balsamic vinegar',
+          'Salt and pepper',
+          'Mozzarella cheese (optional)',
         ],
         directions: [
-          'Preheat the oven to 400 degrees F (200 degrees C)',
-          'Brush bread slices with oil and toast until golden',
-          'Mix tomatoes, basil, Parmesan cheese, and garlic in a bowl',
-          'Add balsamic vinegar, olive oil, salt, and pepper',
-          'Spoon tomato mixture onto toasted bread slices',
-          'Serve immediately and enjoy!',
+          'Toast baguette slices',
+          'Dice tomatoes',
+          'Mince garlic and basil',
+          'Mix vegetables with olive oil',
+          'Add balsamic vinegar',
+          'Top toasted bread',
+          'Serve immediately',
         ],
         nutritions: [
-          'Total Fat 4g',
-          'Protein 8g',
-          'Carbohydrates 33g',
+          'Total Fat: 6g',
+          'Protein: 4g',
+          'Carbohydrates: 20g',
         ],
-        authorId: 'user2',
-        authorName: 'Chef Mike',
-        description: 'Fresh and flavorful Italian appetizer',
+        authorId: 'user1',
+        authorName: 'Chef Teresa',
+        description: 'Fresh Italian appetizer with tomatoes and basil',
         difficultyLevel: 'Easy',
-        fat: 4.0,
-        protein: 8.0,
-        carbs: 33.0,
-        tags: ['Italian', 'Appetizer', 'Vegetarian'],
+        fat: 6.0,
+        protein: 4.0,
+        carbs: 20.0,
+        tags: [], // Let dynamic tagging handle this
       ),
       Recipe(
         id: '3',
-        title: 'Korean Seafood Pancakes',
-        category: 'Appetizers',
+        title: 'Korean Seafood Pancake',
+        category: 'Appetizer',
         image: 'assets/images/korean_pancake.png',
-        rating: 4.9,
-        prepTimeMinutes: 30,
-        servings: 2,
-        calories: 783,
+        rating: 4.6,
+        prepTimeMinutes: 25,
+        servings: 4,
+        calories: 280,
         ingredients: [
-          '1 cup plain flour',
-          '1 Tbsp cornstarch',
-          '1 1/8 tsp fine salt',
-          '1 1/8 tsp garlic powder',
-          '1 cup icy cold water',
-          '12 green onion tops',
-          '100g calamari, cleaned and cut',
-          '100g prawns, cleaned',
-          '1 egg, beaten',
-          '6 Tbsp cooking oil',
+          '1 cup all-purpose flour',
+          '1 cup water',
+          '1 egg',
+          '1 tsp salt',
+          '200g mixed seafood (shrimp, squid)',
+          '2 green onions',
+          '1 red pepper',
+          '2 tbsp vegetable oil',
+          'Soy sauce for dipping',
         ],
         directions: [
-          'Mix flour, cornstarch, salt, and garlic powder',
-          'Add cold water to make batter',
-          'Prepare seafood and green onions',
+          'Mix flour, water, egg, and salt for batter',
+          'Chop seafood and vegetables',
           'Heat oil in pan',
           'Pour batter and add toppings',
-          'Cook until golden and crispy',
-          'Serve hot with dipping sauce',
+          'Cook until golden on both sides',
+          'Cut into pieces',
+          'Serve with soy sauce',
         ],
         nutritions: [
-          'Calories: 783kcal',
-          'Carbohydrates: 62g',
-          'Protein: 29g',
-          'Fat: 46g',
+          'Total Fat: 12g',
+          'Protein: 18g',
+          'Carbohydrates: 28g',
         ],
-        authorId: 'user3',
-        authorName: 'Chef Sophia',
-        description: 'Crispy Korean pancake loaded with seafood',
+        authorId: 'user2',
+        authorName: 'Chef Mike',
+        description: 'Crispy Korean pancake with fresh seafood',
         difficultyLevel: 'Medium',
-        fat: 46.0,
-        protein: 29.0,
-        carbs: 62.0,
-        tags: ['Korean', 'Seafood', 'Appetizer'],
+        fat: 12.0,
+        protein: 18.0,
+        carbs: 28.0,
+        tags: [], // Let dynamic tagging handle this
       ),
       Recipe(
         id: '4',
-        title: 'Sichuan Hot&Sour Shredded Potatoes',
-        category: 'Appetizers',
-        image: 'assets/images/shredded_potatoes.png',
+        title: 'Thai Green Curry',
+        category: 'Main Course',
+        image: 'assets/images/greencurry.jpg',
         rating: 4.7,
-        prepTimeMinutes: 30,
+        prepTimeMinutes: 45,
         servings: 4,
-        calories: 153,
+        calories: 350,
         ingredients: [
-          '1 lb potatoes (russet)',
-          '3.5-5 tbsp rice vinegar',
-          '1/2 tsp salt',
-          '1/2 tsp sugar',
-          '1/4 bell pepper',
-          '3 cloves garlic',
-          '3-4 dried red chilis',
-          '1/2 tbsp red Sichuan peppercorns',
-          'scallions',
-          '3 tbsp neutral oil',
+          '400ml coconut milk',
+          '2 tbsp green curry paste',
+          '500g chicken breast',
+          '1 eggplant',
+          '100g green beans',
+          '2 kaffir lime leaves',
+          '1 tbsp fish sauce',
+          '1 tsp sugar',
+          'Thai basil leaves',
+          'Red chili for garnish',
         ],
         directions: [
-          'Peel and julienne potatoes',
-          'Wash potatoes until water runs clear',
-          'Prepare aromatics',
-          'Heat oil and add spices',
-          'Stir fry potatoes until translucent',
-          'Add seasonings and vegetables',
-          'Cook until slightly crunchy',
+          'Heat coconut milk in wok',
+          'Add curry paste and fry',
+          'Add chicken and cook through',
+          'Add vegetables',
+          'Season with fish sauce and sugar',
+          'Add lime leaves and basil',
+          'Serve with jasmine rice',
         ],
         nutritions: [
-          'Calories: 133kcal',
+          'Total Fat: 22g',
+          'Protein: 28g',
           'Carbohydrates: 15g',
-          'Protein: 3g',
-          'Fat: 7g',
         ],
         authorId: 'user2',
         authorName: 'Chef Mike',
-        description: 'Spicy and tangy Sichuan-style potato dish',
+        description: 'Authentic Thai curry with coconut milk and vegetables',
         difficultyLevel: 'Medium',
-        fat: 7.0,
-        protein: 3.0,
+        fat: 22.0,
+        protein: 28.0,
         carbs: 15.0,
-        tags: ['Chinese', 'Spicy', 'Vegetarian'],
+        tags: [], // Let dynamic tagging handle this
       ),
       Recipe(
         id: '5',
-        title: 'Penang Hokkien Mee (Prawn Mee)',
+        title: 'Penang Hokkien Mee',
         category: 'Main Course',
         image: 'assets/images/penang_hokkien_mee.png',
-        rating: 4.3,
-        prepTimeMinutes: 120,
-        servings: 4,
-        calories: 842,
+        rating: 4.4,
+        prepTimeMinutes: 40,
+        servings: 2,
+        calories: 420,
         ingredients: [
-          '1 lb shrimps (shell on)',
-          '1 lb bone-in pork ribs',
-          '½ lb pork belly',
-          '5 tbsp vegetable oil',
-          '8 shallots, sliced',
-          '4 tbsp chili paste',
-          '2 tbsp fish sauce',
-          '12 oz bean sprouts',
-          '4 oz kangkung',
-          '1 lb fresh yellow noodles',
+          '400g fresh yellow noodles',
+          '200g rice noodles',
+          '200g prawns',
+          '100g pork belly',
+          '2 eggs',
+          '100g bean sprouts',
+          '3 cloves garlic',
+          '2 tbsp dark soy sauce',
+          '1 tbsp oyster sauce',
+          'White pepper',
         ],
         directions: [
           'Prepare prawn stock',
-          'Cook pork ribs and belly',
-          'Make chili oil',
-          'Prepare noodles and vegetables',
-          'Assemble bowls',
-          'Serve with garnishes',
+          'Soak rice noodles',
+          'Stir-fry garlic and pork',
+          'Add prawns and cook',
+          'Add noodles and sauces',
+          'Scramble eggs in the same pan',
+          'Add bean sprouts last',
+          'Serve hot',
         ],
         nutritions: [
-          'Calories: 842kcal',
+          'Total Fat: 15g',
+          'Protein: 25g',
+          'Carbohydrates: 45g',
         ],
         authorId: 'user2',
         authorName: 'Chef Mike',
-        description: 'Authentic Penang-style prawn noodle soup',
+        description: 'Traditional Malaysian stir-fried noodles',
         difficultyLevel: 'Hard',
-        fat: 35.0,
-        protein: 45.0,
-        carbs: 80.0,
-        tags: ['Malaysian', 'Noodles', 'Seafood'],
+        fat: 15.0,
+        protein: 25.0,
+        carbs: 45.0,
+        tags: [], // Let dynamic tagging handle this
       ),
       Recipe(
         id: '6',
         title: 'Basque Cheesecake',
         category: 'Dessert',
         image: 'assets/images/basque_cheesecake.png',
-        rating: 4.8,
+        rating: 4.9,
         prepTimeMinutes: 60,
         servings: 8,
-        calories: 398,
+        calories: 320,
         ingredients: [
-          '2 pounds full fat cream cheese',
-          '1 1/2 cups granulated sugar',
-          '5 large eggs',
+          '500g cream cheese',
+          '150g sugar',
+          '3 large eggs',
+          '200ml heavy cream',
+          '20g flour',
           '1 tsp vanilla extract',
-          '1 3/4 cups heavy cream',
-          '1 tsp salt',
-          '1/4 cup all-purpose flour',
+          'Pinch of salt',
         ],
         directions: [
-          'Preheat oven to 400F',
+          'Preheat oven to 210°C',
           'Line springform pan with parchment',
-          'Cream cheese and sugar',
-          'Add eggs and vanilla',
-          'Stream in heavy cream',
-          'Fold in flour and salt',
-          'Bake until burnt top',
-          'Cool and serve',
+          'Beat cream cheese until smooth',
+          'Add sugar gradually',
+          'Beat in eggs one at a time',
+          'Add cream, flour, vanilla, salt',
+          'Bake for 50-60 minutes until golden',
+          'Cool completely before serving',
         ],
         nutritions: [
-          'Calories: 398cal',
-          'Carbohydrates: 23g',
-          'Protein: 7g',
-          'Fat: 32g',
+          'Total Fat: 25g',
+          'Protein: 8g',
+          'Carbohydrates: 20g',
         ],
-        authorId: 'user2',
-        authorName: 'Chef Mike',
-        description: 'Rich and creamy burnt Basque cheesecake',
+        authorId: 'user3',
+        authorName: 'Chef Sophia',
+        description: 'Burnt Basque cheesecake with caramelized top',
         difficultyLevel: 'Medium',
-        fat: 32.0,
-        protein: 7.0,
-        carbs: 23.0,
-        tags: ['Dessert', 'Cheesecake', 'Spanish'],
+        fat: 25.0,
+        protein: 8.0,
+        carbs: 20.0,
+        tags: [], // Let dynamic tagging handle this
       ),
       Recipe(
         id: '7',
         title: 'Sarawak Laksa',
         category: 'Main Course',
         image: 'assets/images/sarawak_laksa.png',
-        rating: 4.4,
+        rating: 4.3,
         prepTimeMinutes: 90,
-        servings: 6,
-        calories: 290,
+        servings: 4,
+        calories: 380,
         ingredients: [
-          '5 small red Thai chilies',
-          '4 shallots',
-          '1 tablespoon fresh ginger',
-          '1 tablespoon galangal',
-          '3 cloves garlic',
-          '2 stalks lemongrass',
-          '6 candlenuts',
-          '2 tablespoon ground coriander',
-          '1 tablespoon ground cumin',
-          '3 Tbsp tamarind pulp',
-          '4 C chicken broth',
-          '1 can coconut milk',
+          '400g rice noodles',
+          '300ml coconut milk',
+          '2 tbsp laksa paste',
+          '200g prawns',
+          '200g chicken',
+          '100g bean sprouts',
+          '2 hard-boiled eggs',
+          'Coriander leaves',
+          'Lime wedges',
+          'Chili oil',
         ],
         directions: [
-          'Make laksa paste',
-          'Cook paste until fragrant',
-          'Add spices and seasonings',
-          'Prepare soup base',
-          'Cook toppings',
-          'Assemble bowls',
-          'Serve with garnishes',
+          'Prepare laksa paste or use store-bought',
+          'Cook chicken and prawns',
+          'Boil rice noodles',
+          'Heat coconut milk with laksa paste',
+          'Add cooked proteins',
+          'Assemble bowls with noodles',
+          'Pour hot soup over',
+          'Garnish with herbs and serve',
         ],
         nutritions: [
-          'Calories: 290kcal',
-          'Carbohydrates: 11g',
-          'Protein: 10g',
-          'Fat: 25g',
+          'Total Fat: 25g',
+          'Protein: 30g',
+          'Carbohydrates: 35g',
         ],
         authorId: 'user2',
         authorName: 'Chef Mike',
-        description: 'Spicy and aromatic Malaysian laksa',
+        description: 'Spicy and aromatic Malaysian coconut noodle soup',
         difficultyLevel: 'Hard',
         fat: 25.0,
         protein: 10.0,
         carbs: 11.0,
-        tags: ['Malaysian', 'Spicy', 'Noodles'],
+        tags: [], // Let dynamic tagging handle this
       ),
       Recipe(
         id: '8',
@@ -436,12 +447,17 @@ class DataMigrationService {
         fat: 19.0,
         protein: 2.0,
         carbs: 52.0,
-        tags: ['Dessert', 'American', 'Pie'],
+        tags: [], // Let dynamic tagging handle this
       ),
     ];
 
     for (final recipe in recipes) {
-      await FirebaseService.createRecipe(recipe);
+      final recipeId = await FirebaseService.createRecipe(recipe);
+      if (recipeId != null) {
+        print('✅ Created recipe: ${recipe.title} with dynamic tagging');
+      } else {
+        print('❌ Failed to create recipe: ${recipe.title}');
+      }
     }
   }
 
@@ -488,7 +504,7 @@ class DataMigrationService {
     }
   }
 
-  // Migrate ingredients and tags
+  // Migrate ingredients and base tags (foundation data)
   static Future<void> _migrateIngredientsAndTags() async {
     // Common ingredients
     final ingredients = [
@@ -518,31 +534,32 @@ class DataMigrationService {
       await FirebaseService.createIngredient(ingredient);
     }
 
-    // Common tags
-    final tags = [
-      Tag(id: 'tag1', name: 'Italian'),
-      Tag(id: 'tag2', name: 'Chinese'),
-      Tag(id: 'tag3', name: 'Korean'),
-      Tag(id: 'tag4', name: 'Malaysian'),
-      Tag(id: 'tag5', name: 'Spanish'),
-      Tag(id: 'tag6', name: 'American'),
-      Tag(id: 'tag7', name: 'Vegetarian'),
-      Tag(id: 'tag8', name: 'Vegan'),
-      Tag(id: 'tag9', name: 'Gluten-Free'),
-      Tag(id: 'tag10', name: 'Quick'),
-      Tag(id: 'tag11', name: 'Easy'),
-      Tag(id: 'tag12', name: 'Medium'),
-      Tag(id: 'tag13', name: 'Hard'),
-      Tag(id: 'tag14', name: 'Appetizer'),
-      Tag(id: 'tag15', name: 'Main Course'),
-      Tag(id: 'tag16', name: 'Dessert'),
-      Tag(id: 'tag17', name: 'Breakfast'),
-      Tag(id: 'tag18', name: 'Spicy'),
-      Tag(id: 'tag19', name: 'Seafood'),
-      Tag(id: 'tag20', name: 'Healthy'),
+    // Create base tags that will be used by the dynamic tagging system
+    // Note: The dynamic system will create additional tags as needed
+    final baseTags = [
+      Tag(id: '', name: 'Italian'),
+      Tag(id: '', name: 'Chinese'),
+      Tag(id: '', name: 'Korean'),
+      Tag(id: '', name: 'Malaysian'),
+      Tag(id: '', name: 'Spanish'),
+      Tag(id: '', name: 'American'),
+      Tag(id: '', name: 'Vegetarian'),
+      Tag(id: '', name: 'Vegan'),
+      Tag(id: '', name: 'Gluten-Free'),
+      Tag(id: '', name: 'Quick'),
+      Tag(id: '', name: 'Easy'),
+      Tag(id: '', name: 'Medium'),
+      Tag(id: '', name: 'Hard'),
+      Tag(id: '', name: 'Appetizer'),
+      Tag(id: '', name: 'Main Course'),
+      Tag(id: '', name: 'Dessert'),
+      Tag(id: '', name: 'Breakfast'),
+      Tag(id: '', name: 'Spicy'),
+      Tag(id: '', name: 'Seafood'),
+      Tag(id: '', name: 'Healthy'),
     ];
 
-    for (final tag in tags) {
+    for (final tag in baseTags) {
       await FirebaseService.createTag(tag);
     }
   }
@@ -589,5 +606,45 @@ class DataMigrationService {
     for (final item in groceryItems) {
       await FirebaseService.addGroceryItem(item);
     }
+  }
+
+  /// Migrate existing recipes from hardcoded tags to dynamic tags
+  /// This method can be called to update existing recipes in the database
+  static Future<bool> migrateExistingRecipesToDynamicTagging() async {
+    try {
+      print('🔄 Starting migration of existing recipes to dynamic tagging...');
+      
+      // Get all existing recipes
+      final existingRecipes = await FirebaseService.getAllRecipes();
+      
+      for (final recipe in existingRecipes) {
+        print('🔄 Migrating recipe: ${recipe.title}');
+        
+        // Apply dynamic tagging to existing recipe
+        await RecipeTaggingService.applyTagsToRecipe(
+          recipeId: recipe.id,
+          category: recipe.category,
+          prepTimeMinutes: recipe.prepTimeMinutes,
+          difficultyLevel: recipe.difficultyLevel,
+          ingredients: recipe.ingredients,
+          title: recipe.title,
+          description: recipe.description,
+          additionalTags: recipe.tags, // Preserve any existing manual tags
+        );
+        
+        print('✅ Migrated recipe: ${recipe.title}');
+      }
+      
+      print('🎉 Successfully migrated ${existingRecipes.length} recipes to dynamic tagging');
+      return true;
+    } catch (e) {
+      print('❌ Error migrating existing recipes: $e');
+      return false;
+    }
+  }
+
+  /// Reset migration flag (for testing purposes)
+  static void resetMigrationFlag() {
+    _hasRunMigration = false;
   }
 }
