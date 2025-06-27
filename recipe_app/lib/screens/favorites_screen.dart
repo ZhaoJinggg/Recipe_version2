@@ -125,76 +125,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget _buildSavedContent(List<Recipe> recipes) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              _buildCircleOption(
-                icon: Icons.favorite,
-                label: 'Favorites',
-                onTap: () {
-                  // Already on favorites
-                },
-              ),
-              const SizedBox(width: 20),
-              _buildCircleOption(
-                icon: Icons.add,
-                label: 'New Cookbook',
-                onTap: () {
-                  // Create new cookbook functionality
-                },
-                isAdd: true,
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _buildFavoritesList(recipes),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCircleOption({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isAdd = false,
-  }) {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isAdd ? Colors.grey[200] : Colors.white,
-              border: isAdd
-                  ? null
-                  : Border.all(color: AppColors.textPrimary, width: 2),
-            ),
-            child: Icon(
-              icon,
-              color: AppColors.textPrimary,
-              size: 30,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
+    return _buildFavoritesList(recipes);
   }
 
   Widget _buildFavoritesList(List<Recipe> recipes) {
