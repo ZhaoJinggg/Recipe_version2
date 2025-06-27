@@ -199,12 +199,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   Widget _buildFavoritesList(List<Recipe> recipes) {
     return GridView.builder(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(12.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
       ),
       itemCount: recipes.length,
       itemBuilder: (context, index) {
@@ -215,157 +215,168 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget _buildRecipeCard(Recipe recipe) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
-            spreadRadius: 1,
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Recipe image with time
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  topRight: Radius.circular(10),
-                ),
-                child: Image.asset(
-                  recipe.image,
-                  height: 60,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.access_time,
-                          color: AppColors.textPrimary, size: 10),
-                      const SizedBox(width: 1),
-                      Text(
-                        '${recipe.prepTimeMinutes}min',
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 9,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          '/recipe',
+          arguments: {'recipeId': recipe.id},
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Recipe image with time
+            Expanded(
+              flex: 4,
+              child: Stack(
+                children: [
+                  ClipRRect(
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(7),
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                    child: Image.asset(
+                      recipe.image,
+                      height: double.infinity,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                  padding: const EdgeInsets.all(2),
-                  child: recipe.authorId.isNotEmpty
-                      ? CircleAvatar(
-                          backgroundColor: Colors.grey[200],
-                          radius: 7,
-                          child: Text(
-                            recipe.authorName[0],
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.access_time,
+                              color: AppColors.textPrimary, size: 12),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${recipe.prepTimeMinutes}min',
                             style: const TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
                               color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
                             ),
                           ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ),
-            ],
-          ),
-          // Recipe info
-          Padding(
-            padding: const EdgeInsets.all(5.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Rating
-                Row(
-                  children: List.generate(5, (starIndex) {
-                    return Icon(
-                      Icons.star,
-                      color: starIndex < recipe.rating.floor()
-                          ? AppColors.primary
-                          : Colors.grey[300],
-                      size: 10,
-                    );
-                  }),
-                ),
-                const SizedBox(height: 2),
-                // Title
-                Text(
-                  recipe.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                // Add ingredients button
-                SizedBox(
-                  width: double.infinity,
-                  height: 24,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/recipe',
-                        arguments: {'recipeId': recipe.id},
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.textPrimary,
-                      elevation: 0,
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
+                        ],
                       ),
-                      minimumSize: const Size(double.infinity, 24),
-                    ),
-                    child: Text(
-                      'ADD ${recipe.ingredients.length} INGREDIENTS',
-                      style: const TextStyle(
-                          fontSize: 10, fontWeight: FontWeight.w500),
                     ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    bottom: 6,
+                    right: 6,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.all(3),
+                      child: recipe.authorId.isNotEmpty
+                          ? CircleAvatar(
+                              backgroundColor: Colors.grey[200],
+                              radius: 8,
+                              child: Text(
+                                recipe.authorName[0],
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            // Recipe info
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Rating
+                  Row(
+                    children: List.generate(5, (starIndex) {
+                      return Icon(
+                        Icons.star,
+                        color: starIndex < recipe.rating.floor()
+                            ? AppColors.primary
+                            : Colors.grey[300],
+                        size: 12,
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 4),
+                  // Title
+                  Text(
+                    recipe.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  // Add ingredients button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 28,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/recipe',
+                          arguments: {'recipeId': recipe.id},
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.textPrimary,
+                        elevation: 0,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        minimumSize: const Size(double.infinity, 28),
+                      ),
+                      child: Text(
+                        'ADD ${recipe.ingredients.length} INGREDIENTS',
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
