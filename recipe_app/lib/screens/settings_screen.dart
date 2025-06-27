@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -312,14 +313,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: () {
-            // TODO: Implement logout
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Logout functionality coming soon!'),
-                backgroundColor: AppColors.primary,
-              ),
-            );
+          onPressed: () async {
+            try {
+              await UserSessionService.logoutUser();
+              Navigator.pushReplacementNamed(context, '/login');
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Logout failed: \$e'),
+                  backgroundColor: AppColors.primary,
+                ),
+              );
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
