@@ -21,10 +21,12 @@ class UserSessionService {
   static Future<bool> loginUser(String email, String password) async {
     try {
       // Sign in with Firebase Auth
-      final userCredential = await FirebaseService.signInWithEmailAndPassword(email, password);
+      final userCredential =
+          await FirebaseService.signInWithEmailAndPassword(email, password);
       if (userCredential.user != null) {
         // Fetch user profile from Firestore
-        final userProfile = await FirebaseService.getUserById(userCredential.user!.uid);
+        final userProfile =
+            await FirebaseService.getUserById(userCredential.user!.uid);
         if (userProfile != null) {
           _currentUser = userProfile;
           await _saveUserIdToPrefs(userProfile.id);
@@ -55,7 +57,8 @@ class UserSessionService {
   }) async {
     try {
       // Create user in Firebase Auth
-      final userCredential = await FirebaseService.createUserWithEmailAndPassword(email, password);
+      final userCredential =
+          await FirebaseService.createUserWithEmailAndPassword(email, password);
       if (userCredential.user != null) {
         // Create user profile in Firestore
         final newUser = AppUser.User(
@@ -112,12 +115,47 @@ class UserSessionService {
   /// Update current user profile
   static Future<bool> updateUserProfile(AppUser.User updatedUser) async {
     try {
-      // Only update local session
+      print('📝 Updating user profile in database: ${updatedUser.name}');
+
+      // Save to Firebase database
+      final success = await FirebaseService.createOrUpdateUser(updatedUser);
+      if (!success) {
+        print('❌ Failed to update user profile in database');
+        return false;
+      }
+
+      // Update local session
       _currentUser = updatedUser;
-      print('✅ User profile updated: ${updatedUser.name}');
+      print('✅ User profile updated successfully: ${updatedUser.name}');
       return true;
     } catch (e) {
       print('❌ Error updating user profile: $e');
+      return false;
+    }
+  }
+
+  /// Reload current user profile from database
+  static Future<bool> reloadUserProfile() async {
+    try {
+      if (_currentUser == null) {
+        print('❌ No current user to reload');
+        return false;
+      }
+
+      print('🔄 Reloading user profile from database: ${_currentUser!.id}');
+
+      // Fetch latest user data from database
+      final userProfile = await FirebaseService.getUserById(_currentUser!.id);
+      if (userProfile != null) {
+        _currentUser = userProfile;
+        print('✅ User profile reloaded successfully: ${userProfile.name}');
+        return true;
+      } else {
+        print('❌ User profile not found in database');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Error reloading user profile: $e');
       return false;
     }
   }

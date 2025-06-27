@@ -29,6 +29,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
+      // Try to reload from database first
+      final reloadSuccess = await UserSessionService.reloadUserProfile();
+      if (reloadSuccess) {
+        final user = UserSessionService.getCurrentUser();
+        if (user != null) {
+          setState(() {
+            _currentUser = user;
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      // Fallback to current session
       final user = UserSessionService.getCurrentUser();
       if (user != null) {
         setState(() {

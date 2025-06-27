@@ -87,8 +87,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         final post = mockPosts[i];
         print('💾 Saving post ${i + 1}/${mockPosts.length}: ${post.userName}');
 
-        final postId =
-            await FirebaseService.createPostWithoutDuplicateCheck(post);
+        final postId = await FirebaseService.createPost(post);
         if (postId != null) {
           print(
               '✅ Saved post: ${post.userName} - ${post.content.substring(0, 30)}... (ID: $postId)');
