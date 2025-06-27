@@ -3,7 +3,7 @@ import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/models/recipe.dart';
 import 'package:recipe_app/models/grocery_item.dart';
 import 'package:recipe_app/services/firebase_service.dart';
-import 'package:recipe_app/services/mock_data_service.dart';
+import 'package:recipe_app/services/user_session_service.dart';
 
 class RecipeIngredientsWidget extends StatefulWidget {
   final Recipe recipe;
@@ -23,7 +23,30 @@ class _RecipeIngredientsWidgetState extends State<RecipeIngredientsWidget> {
 
   Future<void> _addIngredientToGroceryList(String ingredient, int index) async {
     try {
-      final currentUser = MockDataService.getCurrentUser();
+      final currentUser = UserSessionService.getCurrentUser();
+      if (currentUser == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                      child: Text('Please log in to add ingredients')),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          );
+        }
+        return;
+      }
+
       final groceryItem = GroceryItem(
         id: '', // Firebase will generate this
         userId: currentUser.id,
@@ -57,6 +80,7 @@ class _RecipeIngredientsWidgetState extends State<RecipeIngredientsWidget> {
         );
       }
     } catch (e) {
+      print('❌ Error adding ingredient to grocery list: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

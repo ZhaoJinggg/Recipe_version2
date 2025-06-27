@@ -651,6 +651,29 @@ class DataMigrationService {
     _hasRunMigration = false;
   }
 
+  /// Migrate only posts to Firebase (for community screen)
+  static Future<bool> migratePostsToFirebase() async {
+    try {
+      print('🚀 Starting posts migration to Firebase...');
+
+      // Initialize Firebase first
+      final firebaseInitialized = await FirebaseService.initialize();
+      if (!firebaseInitialized) {
+        print('❌ Failed to initialize Firebase');
+        return false;
+      }
+
+      // Migrate posts
+      await _migratePosts();
+      print('✅ Posts migrated successfully!');
+
+      return true;
+    } catch (e) {
+      print('❌ Posts migration failed: $e');
+      return false;
+    }
+  }
+
   /// Re-import all mock recipes into Firestore, ensuring no duplicates
   static Future<void> reimportMockRecipes() async {
     final recipes = MockDataService.getAllRecipes();

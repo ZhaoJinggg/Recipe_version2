@@ -298,6 +298,37 @@ class FirebaseService {
   // Create post
   static Future<String?> createPost(Post post) async {
     try {
+      // Simplified duplicate check to avoid composite index requirement
+      // Check for duplicate posts (same content by same user within last 5 minutes)
+      final fiveMinutesAgo =
+          DateTime.now().subtract(const Duration(minutes: 5));
+
+      try {
+        final duplicateCheck = await _firestore
+            .collection(_postsCollection)
+            .where('userId', isEqualTo: post.userId)
+            .where('content', isEqualTo: post.content)
+            .where('createdAt',
+                isGreaterThan: fiveMinutesAgo.millisecondsSinceEpoch)
+            .get();
+
+        if (duplicateCheck.docs.isNotEmpty) {
+          print('❌ Duplicate post detected. Post not created.');
+          return null;
+        }
+      } catch (e) {
+        // If composite index is missing, skip duplicate check for now
+        print(
+            '⚠️ Composite index missing for duplicate check. Skipping duplicate detection.');
+        print(
+            '💡 To enable duplicate detection, create this index in Firebase Console:');
+        print('   Collection: posts');
+        print(
+            '   Fields: userId (Ascending), content (Ascending), createdAt (Ascending)');
+        print(
+            '   Or click this link: https://console.firebase.google.com/v1/r/project/recipe-app-6f86b/firestore/indexes?create_composite=Ck5wcm9qZWN0cy9yZWNpcGUtYXBwLTZmODZiL2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9wb3N0cy9pbmRleGVzL18QARoLCgdjb250ZW50EAEaCgoGdXNlcklkEAEaDQoJY3JlYXRlZEF0EAEaDAoIX19uYW1lX18QAQ');
+      }
+
       final docRef =
           await _firestore.collection(_postsCollection).add(post.toJson());
 
@@ -306,6 +337,24 @@ class FirebaseService {
       return docRef.id;
     } catch (e) {
       print('Error creating post: $e');
+      return null;
+    }
+  }
+
+  // Create post without duplicate detection (for initial setup)
+  static Future<String?> createPostWithoutDuplicateCheck(Post post) async {
+    try {
+      print('📝 Creating post without duplicate check: ${post.userName}');
+
+      final docRef =
+          await _firestore.collection(_postsCollection).add(post.toJson());
+
+      // Update the post with the generated ID
+      await docRef.update({'id': docRef.id});
+      print('✅ Post created successfully with ID: ${docRef.id}');
+      return docRef.id;
+    } catch (e) {
+      print('❌ Error creating post without duplicate check: $e');
       return null;
     }
   }
@@ -367,6 +416,48 @@ class FirebaseService {
     } catch (e) {
       print('Error deleting post: $e');
       return false;
+    }
+  }
+
+  // Clean up duplicate posts
+  static Future<void> cleanupDuplicatePosts() async {
+    try {
+      print('🧹 Starting duplicate post cleanup...');
+
+      // Get all posts
+      final allPosts = await getAllPosts();
+      final Map<String, List<Post>> userContentMap = {};
+
+      // Group posts by user and content
+      for (final post in allPosts) {
+        final key = '${post.userId}_${post.content}';
+        if (!userContentMap.containsKey(key)) {
+          userContentMap[key] = [];
+        }
+        userContentMap[key]!.add(post);
+      }
+
+      // Find and delete duplicates (keep the oldest post)
+      int deletedCount = 0;
+      for (final entry in userContentMap.entries) {
+        final posts = entry.value;
+        if (posts.length > 1) {
+          // Sort by creation time (oldest first)
+          posts.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+          // Keep the first (oldest) post, delete the rest
+          for (int i = 1; i < posts.length; i++) {
+            await deletePost(posts[i].id);
+            deletedCount++;
+            print('🗑️ Deleted duplicate post: ${posts[i].id}');
+          }
+        }
+      }
+
+      print(
+          '✅ Duplicate cleanup completed. Deleted $deletedCount duplicate posts.');
+    } catch (e) {
+      print('❌ Error during duplicate cleanup: $e');
     }
   }
 
