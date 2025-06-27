@@ -435,7 +435,8 @@ class MockDataService {
           'Just made this amazing pies with apple and honey! So delicious and easy to make.',
       image: 'assets/images/apple_pie.png',
       createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      likes: 24,
+      likes: 3,
+      likedBy: ['user2', 'user3', 'user4'], // Sample users who liked this post
     ),
     Post(
       id: 'post2',
@@ -446,7 +447,8 @@ class MockDataService {
           'Experimenting with some new curry recipes today. What\'s your favorite curry dish?',
       image: 'assets/images/greencurry.jpg',
       createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-      likes: 18,
+      likes: 2,
+      likedBy: ['user1', 'user3'], // Sample users who liked this post
       comments: [
         PostComment(
           id: 'comment1',
@@ -467,7 +469,13 @@ class MockDataService {
           'Who else loves making desserts? Just finished this tiramisu for a family dinner tonight!',
       image: 'assets/images/tiramisu.jpg',
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      likes: 42,
+      likes: 4,
+      likedBy: [
+        'user1',
+        'user2',
+        'user4',
+        'user5'
+      ], // Sample users who liked this post
     ),
   ];
 
@@ -523,10 +531,11 @@ class MockDataService {
       id: 'post${_posts.length + 1}',
       userId: _currentUser.id,
       userName: _currentUser.name,
-      userProfileUrl: _currentUser.profileImage,
+      userProfileUrl: _currentUser.profileImageUrl,
       content: content,
       image: image,
       createdAt: DateTime.now(),
+      likedBy: [], // Initialize empty liked by list
     );
 
     // In a real app, this would be saved to a database

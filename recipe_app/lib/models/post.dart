@@ -11,6 +11,7 @@ class Post {
   final List<PostComment> comments;
   final int likes;
   final bool hasLiked;
+  final List<String> likedBy;
 
   Post({
     required this.id,
@@ -23,7 +24,13 @@ class Post {
     this.comments = const [],
     this.likes = 0,
     this.hasLiked = false,
+    this.likedBy = const [],
   });
+
+  // Helper method to check if a specific user has liked the post
+  bool isLikedByUser(String userId) {
+    return likedBy.contains(userId);
+  }
 
   Post copyWith({
     String? id,
@@ -36,6 +43,7 @@ class Post {
     List<PostComment>? comments,
     int? likes,
     bool? hasLiked,
+    List<String>? likedBy,
   }) {
     return Post(
       id: id ?? this.id,
@@ -48,6 +56,7 @@ class Post {
       comments: comments ?? this.comments,
       likes: likes ?? this.likes,
       hasLiked: hasLiked ?? this.hasLiked,
+      likedBy: likedBy ?? this.likedBy,
     );
   }
 
@@ -63,10 +72,17 @@ class Post {
       'comments': comments.map((comment) => comment.toJson()).toList(),
       'likes': likes,
       'hasLiked': hasLiked,
+      'likedBy': likedBy,
     };
   }
 
   factory Post.fromJson(Map<String, dynamic> json) {
+    final likedBy = List<String>.from(json['likedBy'] ?? []);
+    final likes = json['likes'] ?? 0;
+
+    // Ensure likes count matches likedBy array length if likedBy exists
+    final actualLikes = likedBy.isNotEmpty ? likedBy.length : likes;
+
     return Post(
       id: json['id'] ?? '',
       userId: json['userId'] ?? '',
@@ -79,8 +95,9 @@ class Post {
       comments: (json['comments'] as List<dynamic>? ?? [])
           .map((commentJson) => PostComment.fromJson(commentJson))
           .toList(),
-      likes: json['likes'] ?? 0,
+      likes: actualLikes,
       hasLiked: json['hasLiked'] ?? false,
+      likedBy: likedBy,
     );
   }
 }

@@ -262,7 +262,7 @@ class FirebaseService {
       final querySnapshot = await _firestore
           .collection(_recipesCollection)
           .where('title', isGreaterThanOrEqualTo: query)
-          .where('title', isLessThanOrEqualTo: query + '\uf8ff')
+          .where('title', isLessThanOrEqualTo: '$query\uf8ff')
           .get();
 
       return querySnapshot.docs
@@ -397,6 +397,63 @@ class FirebaseService {
       return true;
     } catch (e) {
       print('Error deleting post: $e');
+      return false;
+    }
+  }
+
+  // Like/Unlike post
+  static Future<bool> togglePostLike(String postId, String userId) async {
+    try {
+      final postDoc =
+          await _firestore.collection(_postsCollection).doc(postId).get();
+      if (!postDoc.exists) return false;
+
+      final postData = postDoc.data()!;
+      final likedBy = List<String>.from(postData['likedBy'] ?? []);
+
+      final hasLiked = likedBy.contains(userId);
+
+      // Toggle like status
+      if (hasLiked) {
+        likedBy.remove(userId);
+      } else {
+        likedBy.add(userId);
+      }
+
+      await _firestore.collection(_postsCollection).doc(postId).update({
+        'likes': likedBy.length,
+        'likedBy': likedBy,
+      });
+
+      return true;
+    } catch (e) {
+      print('Error toggling post like: $e');
+      return false;
+    }
+  }
+
+  // Add comment to post
+  static Future<bool> addCommentToPost(
+      String postId, PostComment comment) async {
+    try {
+      final postDoc =
+          await _firestore.collection(_postsCollection).doc(postId).get();
+      if (!postDoc.exists) return false;
+
+      final postData = postDoc.data()!;
+      final currentComments =
+          List<Map<String, dynamic>>.from(postData['comments'] ?? []);
+
+      // Add new comment
+      currentComments.add(comment.toJson());
+
+      await _firestore.collection(_postsCollection).doc(postId).update({
+        'comments': currentComments,
+      });
+
+      return true;
+    } catch (e) {
+      print('Error adding comment to post: $e');
       return false;
     }
   }

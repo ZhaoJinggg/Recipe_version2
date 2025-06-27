@@ -7,7 +7,7 @@ import 'package:recipe_app/services/firebase_service.dart';
 import 'package:recipe_app/services/user_session_service.dart';
 
 class FavoritesScreen extends StatefulWidget {
-  const FavoritesScreen({Key? key}) : super(key: key);
+  const FavoritesScreen({super.key});
 
   @override
   State<FavoritesScreen> createState() => _FavoritesScreenState();
@@ -199,12 +199,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   Widget _buildFavoritesList(List<Recipe> recipes) {
     return GridView.builder(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(8.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.68,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        childAspectRatio: 1.3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
       ),
       itemCount: recipes.length,
       itemBuilder: (context, index) {
@@ -218,13 +218,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withOpacity(0.15),
             spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -236,37 +236,37 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
                 ),
                 child: Image.asset(
                   recipe.image,
-                  height: 120,
+                  height: 60,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               ),
               Positioned(
-                top: 8,
-                right: 8,
+                top: 4,
+                right: 4,
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(7),
                   ),
                   child: Row(
                     children: [
                       const Icon(Icons.access_time,
-                          color: AppColors.textPrimary, size: 14),
-                      const SizedBox(width: 2),
+                          color: AppColors.textPrimary, size: 10),
+                      const SizedBox(width: 1),
                       Text(
                         '${recipe.prepTimeMinutes}min',
                         style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 9,
                         ),
                       ),
                     ],
@@ -280,18 +280,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
+                      topLeft: Radius.circular(7),
                     ),
                   ),
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(2),
                   child: recipe.authorId.isNotEmpty
                       ? CircleAvatar(
                           backgroundColor: Colors.grey[200],
-                          radius: 12,
+                          radius: 7,
                           child: Text(
                             recipe.authorName[0],
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 8,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textPrimary,
                             ),
@@ -304,7 +304,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           ),
           // Recipe info
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(5.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -316,42 +316,51 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       color: starIndex < recipe.rating.floor()
                           ? AppColors.primary
                           : Colors.grey[300],
-                      size: 14,
+                      size: 10,
                     );
                   }),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 // Title
                 Text(
                   recipe.title,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 12,
                     color: AppColors.textPrimary,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 // Add ingredients button
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/recipe',
-                      arguments: {'recipeId': recipe.id},
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.textPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 24,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/recipe',
+                        arguments: {'recipeId': recipe.id},
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.textPrimary,
+                      elevation: 0,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      minimumSize: const Size(double.infinity, 24),
                     ),
-                    minimumSize: const Size(double.infinity, 36),
+                    child: Text(
+                      'ADD ${recipe.ingredients.length} INGREDIENTS',
+                      style: const TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.w500),
+                    ),
                   ),
-                  child: Text('ADD ${recipe.ingredients.length} INGREDIENTS'),
                 ),
               ],
             ),

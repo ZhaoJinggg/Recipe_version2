@@ -8,7 +8,7 @@ import 'package:recipe_app/services/firebase_service.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({Key? key}) : super(key: key);
+  const CommunityScreen({super.key});
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -17,9 +17,11 @@ class CommunityScreen extends StatefulWidget {
 class _CommunityScreenState extends State<CommunityScreen> {
   List<Post> _posts = [];
   final _postController = TextEditingController();
+  final _commentController = TextEditingController();
   final int _currentNavIndex = 4; // Community tab
   bool _isLoading = true;
   final Set<String> _recentPostContents = <String>{};
+  String? _showingCommentsForPost;
 
   @override
   void initState() {
@@ -30,6 +32,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   void dispose() {
     _postController.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -148,6 +151,138 @@ class _CommunityScreenState extends State<CommunityScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _toggleLike(Post post) async {
+    final currentUser = UserSessionService.getCurrentUser();
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Please log in to like posts')),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Optimistically update UI
+      final postIndex = _posts.indexWhere((p) => p.id == post.id);
+      if (postIndex != -1) {
+        final currentPost = _posts[postIndex];
+        final isCurrentlyLiked = currentPost.isLikedByUser(currentUser.id);
+        final newLikedBy = List<String>.from(currentPost.likedBy);
+
+        if (isCurrentlyLiked) {
+          newLikedBy.remove(currentUser.id);
+        } else {
+          newLikedBy.add(currentUser.id);
+        }
+
+        setState(() {
+          _posts[postIndex] = currentPost.copyWith(
+            hasLiked: !isCurrentlyLiked,
+            likes: newLikedBy.length,
+            likedBy: newLikedBy,
+          );
+        });
+
+        // Update in Firebase
+        final success =
+            await FirebaseService.togglePostLike(post.id, currentUser.id);
+        if (!success) {
+          // Revert on failure
+          setState(() {
+            _posts[postIndex] = post;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Failed to update like. Please try again.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error toggling like: $e');
+    }
+  }
+
+  Future<void> _addComment(Post post, String content) async {
+    final currentUser = UserSessionService.getCurrentUser();
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Please log in to comment')),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      return;
+    }
+
+    if (content.trim().isEmpty) return;
+
+    try {
+      final newComment = PostComment(
+        id: FirebaseService.generateId(),
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userProfileUrl: currentUser.profileImageUrl,
+        content: content.trim(),
+        createdAt: DateTime.now(),
+      );
+
+      // Optimistically update UI
+      final postIndex = _posts.indexWhere((p) => p.id == post.id);
+      if (postIndex != -1) {
+        setState(() {
+          _posts[postIndex] = _posts[postIndex].copyWith(
+            comments: [..._posts[postIndex].comments, newComment],
+          );
+        });
+
+        // Clear comment input
+        _commentController.clear();
+
+        // Update in Firebase
+        final success =
+            await FirebaseService.addCommentToPost(post.id, newComment);
+        if (!success) {
+          // Revert on failure
+          setState(() {
+            _posts[postIndex] = post;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Failed to add comment. Please try again.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error adding comment: $e');
     }
   }
 
@@ -622,32 +757,57 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      post.hasLiked ? Icons.favorite : Icons.favorite_border,
-                      color: post.hasLiked ? Colors.red : Colors.grey,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      post.likes.toString(),
-                      style: const TextStyle(
-                        color: Colors.grey,
+                GestureDetector(
+                  onTap: () => _toggleLike(post),
+                  child: Row(
+                    children: [
+                      Icon(
+                        () {
+                          final currentUser =
+                              UserSessionService.getCurrentUser();
+                          final isLiked = currentUser != null &&
+                              post.isLikedByUser(currentUser.id);
+                          return isLiked
+                              ? Icons.favorite
+                              : Icons.favorite_border;
+                        }(),
+                        color: () {
+                          final currentUser =
+                              UserSessionService.getCurrentUser();
+                          final isLiked = currentUser != null &&
+                              post.isLikedByUser(currentUser.id);
+                          return isLiked ? Colors.red : Colors.grey;
+                        }(),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        post.likes.toString(),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Row(
-                  children: [
-                    const Icon(Icons.comment_outlined, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(
-                      post.comments.length.toString(),
-                      style: const TextStyle(
-                        color: Colors.grey,
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _showingCommentsForPost =
+                          _showingCommentsForPost == post.id ? null : post.id;
+                    });
+                  },
+                  child: Row(
+                    children: [
+                      const Icon(Icons.comment_outlined, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text(
+                        post.comments.length.toString(),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const Icon(Icons.share_outlined, color: Colors.grey),
               ],
@@ -759,6 +919,112 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ),
                   );
                 }).toList(),
+              ),
+            ),
+          // Add comment input section
+          if (_showingCommentsForPost == post.id)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppColors.primary.withOpacity(0.2),
+                    radius: 16,
+                    child: () {
+                      final user = UserSessionService.getCurrentUser();
+                      if (user?.profileImageUrl != null) {
+                        if (user!.profileImageUrl!.startsWith('assets/')) {
+                          return ClipOval(
+                            child: Image.asset(
+                              user.profileImageUrl!,
+                              fit: BoxFit.cover,
+                              width: 32,
+                              height: 32,
+                            ),
+                          );
+                        } else {
+                          return ClipOval(
+                            child: Image.network(
+                              user.profileImageUrl!,
+                              fit: BoxFit.cover,
+                              width: 32,
+                              height: 32,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Text(
+                                  user.name[0].toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        }
+                      }
+                      return Text(
+                        user?.name[0].toUpperCase() ?? 'G',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      );
+                    }(),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      decoration: InputDecoration(
+                        hintText: 'Write a comment...',
+                        hintStyle: TextStyle(
+                            color: AppColors.textPrimary.withOpacity(0.5)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide(
+                              color: AppColors.primary.withOpacity(0.3)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide(
+                              color: AppColors.primary.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide(color: AppColors.primary),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                      ),
+                      style: TextStyle(color: AppColors.textPrimary),
+                      onSubmitted: (value) {
+                        if (value.trim().isNotEmpty) {
+                          _addComment(post, value);
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.send, color: AppColors.primary),
+                    onPressed: () {
+                      if (_commentController.text.trim().isNotEmpty) {
+                        _addComment(post, _commentController.text);
+                      }
+                    },
+                  ),
+                ],
               ),
             ),
         ],
