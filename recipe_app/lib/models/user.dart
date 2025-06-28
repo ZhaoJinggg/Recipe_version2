@@ -9,6 +9,10 @@ class User {
   final String? gender;
   final List<String> favoriteRecipes;
   final List<String> postedRecipes;
+  final int failedLoginAttempts;
+  final bool isAccountLocked;
+  final DateTime? lastFailedAttempt;
+  final DateTime? accountLockedUntil;
 
   User({
     required this.id,
@@ -21,6 +25,10 @@ class User {
     this.gender,
     this.favoriteRecipes = const [],
     this.postedRecipes = const [],
+    this.failedLoginAttempts = 0,
+    this.isAccountLocked = false,
+    this.lastFailedAttempt,
+    this.accountLockedUntil,
   });
 
   get profileImage => null;
@@ -36,6 +44,10 @@ class User {
     String? gender,
     List<String>? favoriteRecipes,
     List<String>? postedRecipes,
+    int? failedLoginAttempts,
+    bool? isAccountLocked,
+    DateTime? lastFailedAttempt,
+    DateTime? accountLockedUntil,
   }) {
     return User(
       id: id ?? this.id,
@@ -48,6 +60,10 @@ class User {
       gender: gender ?? this.gender,
       favoriteRecipes: favoriteRecipes ?? this.favoriteRecipes,
       postedRecipes: postedRecipes ?? this.postedRecipes,
+      failedLoginAttempts: failedLoginAttempts ?? this.failedLoginAttempts,
+      isAccountLocked: isAccountLocked ?? this.isAccountLocked,
+      lastFailedAttempt: lastFailedAttempt ?? this.lastFailedAttempt,
+      accountLockedUntil: accountLockedUntil ?? this.accountLockedUntil,
     );
   }
 
@@ -63,6 +79,10 @@ class User {
       'gender': gender,
       'favoriteRecipes': favoriteRecipes,
       'postedRecipes': postedRecipes,
+      'failedLoginAttempts': failedLoginAttempts,
+      'isAccountLocked': isAccountLocked,
+      'lastFailedAttempt': lastFailedAttempt?.toIso8601String(),
+      'accountLockedUntil': accountLockedUntil?.toIso8601String(),
     };
   }
 
@@ -78,6 +98,14 @@ class User {
       gender: json['gender'],
       favoriteRecipes: List<String>.from(json['favoriteRecipes'] ?? []),
       postedRecipes: List<String>.from(json['postedRecipes'] ?? []),
+      failedLoginAttempts: json['failedLoginAttempts'] ?? 0,
+      isAccountLocked: json['isAccountLocked'] ?? false,
+      lastFailedAttempt: json['lastFailedAttempt'] != null
+          ? DateTime.parse(json['lastFailedAttempt'])
+          : null,
+      accountLockedUntil: json['accountLockedUntil'] != null
+          ? DateTime.parse(json['accountLockedUntil'])
+          : null,
     );
   }
 }

@@ -70,23 +70,29 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         _isLoading = true;
       });
       try {
-        final success = await UserSessionService.loginUser(
+        final result = await UserSessionService.loginUser(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
-        if (success) {
+
+        if (result['success']) {
           if (mounted) {
+            final wasLocked = result['wasLocked'] ?? false;
+            final message = result['message'] ?? 'Welcome back!';
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.white),
+                    Icon(wasLocked ? Icons.lock_open : Icons.check_circle,
+                        color: Colors.white),
                     const SizedBox(width: 8),
-                    const Text('Welcome back!'),
+                    Expanded(child: Text(message)),
                   ],
                 ),
-                backgroundColor: Colors.green[600],
-                duration: const Duration(seconds: 2),
+                backgroundColor:
+                    wasLocked ? Colors.blue[600] : Colors.green[600],
+                duration: Duration(seconds: wasLocked ? 4 : 2),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -97,46 +103,23 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           }
         } else {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.error, color: Colors.white),
-                    const SizedBox(width: 8),
-                    const Text('Login failed. Please check your credentials.'),
-                  ],
-                ),
-                backgroundColor: Colors.red[600],
-                duration: const Duration(seconds: 3),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            );
+            final errorType = result['error'];
+            final message = result['message'];
+
+            // Handle account locked scenario
+            if (errorType == 'account_locked') {
+              _showAccountLockedDialog();
+            } else if (errorType == 'invalid_credentials') {
+              final remainingAttempts = result['remainingAttempts'] ?? 0;
+              _showInvalidCredentialsSnackBar(message, remainingAttempts);
+            } else {
+              _showErrorSnackBar(message);
+            }
           }
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.error, color: Colors.white),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text('An unexpected error occurred. Please try again.'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.red[600],
-              duration: const Duration(seconds: 4),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          );
+          _showErrorSnackBar('An unexpected error occurred. Please try again.');
         }
       } finally {
         if (mounted) {
@@ -145,6 +128,162 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           });
         }
       }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+
+  void _showInvalidCredentialsSnackBar(String message, int remainingAttempts) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text(message)),
+              ],
+            ),
+            if (remainingAttempts <= 2)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Warning: Your account will be locked after $remainingAttempts more failed attempt(s).',
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+          ],
+        ),
+        backgroundColor:
+            remainingAttempts <= 2 ? Colors.orange[700] : Colors.red[600],
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+
+  void _showAccountLockedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.lock, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Account Locked'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your account has been locked due to too many failed login attempts.',
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'To regain access to your account, please reset your password using the email option below.',
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _resetPassword();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Reset Password'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _resetPassword() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      _showErrorSnackBar('Please enter your email address first.');
+      return;
+    }
+
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      _showErrorSnackBar('Please enter a valid email address.');
+      return;
+    }
+
+    try {
+      final success = await UserSessionService.sendPasswordResetEmail(email);
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.email, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                        'Password reset email sent to $email. Please check your inbox.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green[600],
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        }
+      } else {
+        _showErrorSnackBar(
+            'Failed to send password reset email. Please try again.');
+      }
+    } catch (e) {
+      _showErrorSnackBar('An error occurred while sending reset email.');
     }
   }
 
@@ -403,7 +542,23 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 8),
+
+                            // Forgot Password Link
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _resetPassword,
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
 
                             // Login button
                             ElevatedButton(

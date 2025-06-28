@@ -17,12 +17,19 @@ class UserSessionService {
     _saveUserIdToPrefs(user.id);
   }
 
-  /// Login user using Firebase Auth
-  static Future<bool> loginUser(String email, String password) async {
+  /// Login user using Firebase Auth with account lockout protection
+  static Future<Map<String, dynamic>> loginUser(
+      String email, String password) async {
     try {
-      // Sign in with Firebase Auth
+      // Check if account is locked, but don't prevent login attempt
+      // (Firebase Auth will handle password validation, and successful auth means password was reset)
+      final isLocked = await FirebaseService.isAccountLocked(email);
+
+      // Attempt to sign in with Firebase Auth regardless of our lock status
+      // If Firebase allows login, it means the password is correct (possibly after reset)
       final userCredential =
           await FirebaseService.signInWithEmailAndPassword(email, password);
+
       if (userCredential.user != null) {
         // Fetch user profile from Firestore
         final userProfile =
@@ -30,19 +37,102 @@ class UserSessionService {
         if (userProfile != null) {
           _currentUser = userProfile;
           await _saveUserIdToPrefs(userProfile.id);
-          print('✅ User profile loaded: \\${userProfile.name}');
-          return true;
+
+          // Reset failed login attempts on successful login
+          // This also unlocks the account if it was locked
+          await FirebaseService.resetFailedLoginAttempts(userProfile.id);
+
+          // Show special message if account was previously locked
+          final message = isLocked
+              ? 'Welcome back! Your account has been successfully unlocked.'
+              : 'Login successful';
+
+          print('✅ User profile loaded: ${userProfile.name}');
+          return {
+            'success': true,
+            'message': message,
+            'wasLocked': isLocked,
+          };
         } else {
           print('❌ User profile not found in Firestore');
-          return false;
+          return {
+            'success': false,
+            'error': 'profile_not_found',
+            'message': 'User profile not found. Please contact support.',
+          };
         }
       } else {
-        print('❌ Firebase Auth sign-in failed');
-        return false;
+        // This shouldn't happen with Firebase Auth, but handle it just in case
+        if (isLocked) {
+          return {
+            'success': false,
+            'error': 'account_locked',
+            'message':
+                'Account is locked due to too many failed login attempts. Please reset your password via email.',
+          };
+        }
+
+        await FirebaseService.recordFailedLoginAttempt(email);
+        final remainingAttempts =
+            await FirebaseService.getRemainingLoginAttempts(email);
+
+        return {
+          'success': false,
+          'error': 'auth_failed',
+          'message': 'Authentication failed',
+          'remainingAttempts': remainingAttempts,
+        };
       }
     } catch (e) {
       print('❌ Error during login: $e');
-      return false;
+
+      // Check if account was locked before this attempt
+      final wasLocked = await FirebaseService.isAccountLocked(email);
+
+      // If account was already locked, show lockout message instead of tracking more attempts
+      if (wasLocked) {
+        return {
+          'success': false,
+          'error': 'account_locked',
+          'message':
+              'Account is locked due to too many failed login attempts. Please reset your password via email.',
+        };
+      }
+
+      // Record failed attempt for authentication errors (wrong password, etc.)
+      if (e.toString().contains('wrong-password') ||
+          e.toString().contains('user-not-found') ||
+          e.toString().contains('invalid-credential')) {
+        await FirebaseService.recordFailedLoginAttempt(email);
+        final remainingAttempts =
+            await FirebaseService.getRemainingLoginAttempts(email);
+
+        // Check if account is now locked after this attempt
+        final isNowLocked = await FirebaseService.isAccountLocked(email);
+        if (isNowLocked) {
+          return {
+            'success': false,
+            'error': 'account_locked',
+            'message':
+                'Account has been locked due to too many failed login attempts. Please reset your password via email.',
+          };
+        }
+
+        return {
+          'success': false,
+          'error': 'invalid_credentials',
+          'message':
+              'Invalid email or password. You have $remainingAttempts attempt(s) remaining.',
+          'remainingAttempts': remainingAttempts,
+        };
+      }
+
+      // For other errors (network, etc.), don't count as failed attempt
+      return {
+        'success': false,
+        'error': 'unknown',
+        'message': 'An unexpected error occurred. Please try again.',
+      };
     }
   }
 
@@ -235,5 +325,30 @@ class UserSessionService {
   static Future<void> initialize() async {
     print('🚀 Initializing UserSessionService...');
     await loadUserSession();
+  }
+
+  /// Send password reset email
+  static Future<bool> sendPasswordResetEmail(String email) async {
+    try {
+      print('📧 Sending password reset email to: $email');
+      final success = await FirebaseService.sendPasswordResetEmail(email);
+      if (success) {
+        print('✅ Password reset email sent successfully');
+      }
+      return success;
+    } catch (e) {
+      print('❌ Error sending password reset email: $e');
+      return false;
+    }
+  }
+
+  /// Check if account is locked
+  static Future<bool> isAccountLocked(String email) async {
+    return await FirebaseService.isAccountLocked(email);
+  }
+
+  /// Get remaining login attempts for an email
+  static Future<int> getRemainingLoginAttempts(String email) async {
+    return await FirebaseService.getRemainingLoginAttempts(email);
   }
 }

@@ -821,20 +821,21 @@ class FirebaseService {
       if (existingRating.docs.isNotEmpty) {
         // Update existing rating
         final updatedRating = rating.copyWith(id: existingRating.docs.first.id);
-        await existingRating.docs.first.reference.update(updatedRating.toJson());
+        await existingRating.docs.first.reference
+            .update(updatedRating.toJson());
       } else {
         // Create new rating
         final docRef = await _firestore
             .collection(_recipeRatingsCollection)
             .add(rating.toJson());
-        
+
         // Update with the generated document ID
         await docRef.update({'id': docRef.id});
       }
 
       // Update recipe's average rating
       await _updateRecipeAverageRating(rating.recipeId);
-      
+
       return true;
     } catch (e) {
       print('❌ Error adding/updating recipe rating: $e');
@@ -875,20 +876,22 @@ class FirebaseService {
     try {
       print('🔢 Calculating average rating for recipe: $recipeId');
       final ratings = await getRatingsForRecipe(recipeId);
-      
+
       if (ratings.isNotEmpty) {
-        final totalRating = ratings.map((r) => r.rating).reduce((a, b) => a + b);
+        final totalRating =
+            ratings.map((r) => r.rating).reduce((a, b) => a + b);
         final averageRating = totalRating / ratings.length;
         final roundedAverage = double.parse(averageRating.toStringAsFixed(1));
-        
+
         print('📊 Found ${ratings.length} ratings with total: $totalRating');
-        print('📊 Calculated average: $averageRating → rounded to: $roundedAverage');
+        print(
+            '📊 Calculated average: $averageRating → rounded to: $roundedAverage');
 
         await _firestore
             .collection(_recipesCollection)
             .doc(recipeId)
             .update({'rating': roundedAverage});
-            
+
         print('✅ Updated recipe average rating to: $roundedAverage');
       } else {
         print('📊 No ratings found for recipe: $recipeId');
@@ -1441,6 +1444,148 @@ class FirebaseService {
         allRecipes.addAll(recipes);
       }
       yield allRecipes;
+    }
+  }
+
+  // ==================== ACCOUNT SECURITY METHODS ====================
+
+  /// Track failed login attempt
+  static Future<bool> recordFailedLoginAttempt(String email) async {
+    try {
+      final user = await getUserByEmail(email);
+      if (user == null) {
+        print('❌ User not found for email: $email');
+        return false;
+      }
+
+      final newFailedAttempts = user.failedLoginAttempts + 1;
+      final shouldLock = newFailedAttempts >= 5;
+
+      final updatedUser = user.copyWith(
+        failedLoginAttempts: newFailedAttempts,
+        isAccountLocked: shouldLock,
+        lastFailedAttempt: DateTime.now(),
+        accountLockedUntil:
+            shouldLock ? DateTime.now().add(const Duration(hours: 24)) : null,
+      );
+
+      final success = await createOrUpdateUser(updatedUser);
+      if (success) {
+        print(
+            '📊 Failed login attempt recorded: $newFailedAttempts/5 for $email');
+        if (shouldLock) {
+          print('🔒 Account locked for $email due to too many failed attempts');
+        }
+      }
+      return success;
+    } catch (e) {
+      print('❌ Error recording failed login attempt: $e');
+      return false;
+    }
+  }
+
+  /// Reset failed login attempts (called on successful login)
+  static Future<bool> resetFailedLoginAttempts(String userId) async {
+    try {
+      final user = await getUserById(userId);
+      if (user == null) {
+        print('❌ User not found for ID: $userId');
+        return false;
+      }
+
+      final updatedUser = user.copyWith(
+        failedLoginAttempts: 0,
+        isAccountLocked: false,
+        lastFailedAttempt: null,
+        accountLockedUntil: null,
+      );
+
+      final success = await createOrUpdateUser(updatedUser);
+      if (success) {
+        print('✅ Failed login attempts reset for user: $userId');
+      }
+      return success;
+    } catch (e) {
+      print('❌ Error resetting failed login attempts: $e');
+      return false;
+    }
+  }
+
+  /// Check if account is locked
+  static Future<bool> isAccountLocked(String email) async {
+    try {
+      final user = await getUserByEmail(email);
+      if (user == null) {
+        return false;
+      }
+
+      // Check if account is still locked
+      if (user.isAccountLocked) {
+        // Optional: Auto-unlock after time period (currently disabled)
+        // if (user.accountLockedUntil != null &&
+        //     DateTime.now().isAfter(user.accountLockedUntil!)) {
+        //   await resetFailedLoginAttempts(user.id);
+        //   return false;
+        // }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('❌ Error checking account lock status: $e');
+      return false;
+    }
+  }
+
+  /// Get remaining login attempts
+  static Future<int> getRemainingLoginAttempts(String email) async {
+    try {
+      final user = await getUserByEmail(email);
+      if (user == null) {
+        return 5; // Default for new users
+      }
+      return 5 - user.failedLoginAttempts;
+    } catch (e) {
+      print('❌ Error getting remaining login attempts: $e');
+      return 0;
+    }
+  }
+
+  /// Send password reset email
+  static Future<bool> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      print('✅ Password reset email sent to: $email');
+      return true;
+    } catch (e) {
+      print('❌ Error sending password reset email: $e');
+      return false;
+    }
+  }
+
+  /// Unlock account manually (for admin use or support)
+  static Future<bool> unlockAccount(String email) async {
+    try {
+      final user = await getUserByEmail(email);
+      if (user == null) {
+        print('❌ User not found for email: $email');
+        return false;
+      }
+
+      final updatedUser = user.copyWith(
+        failedLoginAttempts: 0,
+        isAccountLocked: false,
+        lastFailedAttempt: null,
+        accountLockedUntil: null,
+      );
+
+      final success = await createOrUpdateUser(updatedUser);
+      if (success) {
+        print('🔓 Account unlocked for: $email');
+      }
+      return success;
+    } catch (e) {
+      print('❌ Error unlocking account: $e');
+      return false;
     }
   }
 }
