@@ -145,16 +145,23 @@ class FirebaseService {
   // Create recipe
   static Future<String?> createRecipe(Recipe recipe) async {
     try {
+      print('💾 Firebase: Creating recipe with ID: ${recipe.id}');
+      print('👤 Firebase: Author ID: ${recipe.authorId}');
+      print('📝 Firebase: Title: ${recipe.title}');
+
       // Use the recipe's id as the document ID to prevent duplicates
       await _firestore
           .collection(_recipesCollection)
           .doc(recipe.id)
           .set(recipe.toJson());
+
+      print('✅ Firebase: Recipe saved successfully');
+
       // Apply dynamic tagging using the new tagging service
       await _applyDynamicTagging(recipe.id, recipe);
       return recipe.id;
     } catch (e) {
-      print('Error creating recipe: $e');
+      print('❌ Firebase: Error creating recipe: $e');
       return null;
     }
   }
@@ -213,15 +220,28 @@ class FirebaseService {
   // Get recipes by author
   static Future<List<Recipe>> getRecipesByAuthor(String authorId) async {
     try {
+      print('🔍 Firebase: Querying recipes for authorId: $authorId');
       final querySnapshot = await _firestore
           .collection(_recipesCollection)
           .where('authorId', isEqualTo: authorId)
-          .orderBy('dateCreated', descending: true)
+          // Temporarily removing orderBy to check if it's an index issue
+          // .orderBy('dateCreated', descending: true)
           .get();
 
-      return querySnapshot.docs
-          .map((doc) => Recipe.fromJson(doc.data()))
-          .toList();
+      print('📊 Firebase: Found ${querySnapshot.docs.length} documents');
+
+      final recipes =
+          querySnapshot.docs.map((doc) => Recipe.fromJson(doc.data())).toList();
+
+      // Sort manually instead of using Firestore orderBy
+      recipes.sort((a, b) => b.dateCreated.compareTo(a.dateCreated));
+
+      print('📖 Firebase: Mapped to ${recipes.length} recipes');
+      for (final recipe in recipes) {
+        print('   - ${recipe.title} (authorId: ${recipe.authorId})');
+      }
+
+      return recipes;
     } catch (e) {
       print('Error getting recipes by author: $e');
       return [];
@@ -281,13 +301,14 @@ class FirebaseService {
   static Future<List<Recipe>> searchRecipesAdvanced(String query) async {
     try {
       if (query.trim().isEmpty) return [];
-      
+
       final lowercaseQuery = query.toLowerCase();
-      final Map<String, Recipe> uniqueRecipes = {}; // Use Map to ensure uniqueness by ID
+      final Map<String, Recipe> uniqueRecipes =
+          {}; // Use Map to ensure uniqueness by ID
 
       // Get all recipes once and reuse for all searches (more efficient)
       final allRecipes = await getAllRecipes();
-      
+
       // 1. Search by recipe title
       final titleResults = _filterRecipesByTitle(allRecipes, lowercaseQuery);
       for (final recipe in titleResults) {
@@ -295,7 +316,8 @@ class FirebaseService {
       }
 
       // 2. Search by category
-      final categoryResults = _filterRecipesByCategory(allRecipes, lowercaseQuery);
+      final categoryResults =
+          _filterRecipesByCategory(allRecipes, lowercaseQuery);
       for (final recipe in categoryResults) {
         uniqueRecipes[recipe.id] = recipe;
       }
@@ -307,7 +329,8 @@ class FirebaseService {
       }
 
       // 4. Search by ingredients
-      final ingredientResults = _filterRecipesByIngredients(allRecipes, lowercaseQuery);
+      final ingredientResults =
+          _filterRecipesByIngredients(allRecipes, lowercaseQuery);
       for (final recipe in ingredientResults) {
         uniqueRecipes[recipe.id] = recipe;
       }
@@ -317,10 +340,10 @@ class FirebaseService {
       resultsList.sort((a, b) {
         final aInTitle = a.title.toLowerCase().contains(lowercaseQuery);
         final bInTitle = b.title.toLowerCase().contains(lowercaseQuery);
-        
+
         if (aInTitle && !bInTitle) return -1;
         if (!aInTitle && bInTitle) return 1;
-        
+
         // Secondary sort by rating
         return b.rating.compareTo(a.rating);
       });
@@ -333,24 +356,26 @@ class FirebaseService {
   }
 
   // Optimized filter methods that work on existing recipe list
-  static List<Recipe> _filterRecipesByTitle(List<Recipe> recipes, String query) {
-    return recipes.where((recipe) => 
-      recipe.title.toLowerCase().contains(query)
-    ).toList();
+  static List<Recipe> _filterRecipesByTitle(
+      List<Recipe> recipes, String query) {
+    return recipes
+        .where((recipe) => recipe.title.toLowerCase().contains(query))
+        .toList();
   }
 
-  static List<Recipe> _filterRecipesByCategory(List<Recipe> recipes, String query) {
-    return recipes.where((recipe) => 
-      recipe.category.toLowerCase().contains(query)
-    ).toList();
+  static List<Recipe> _filterRecipesByCategory(
+      List<Recipe> recipes, String query) {
+    return recipes
+        .where((recipe) => recipe.category.toLowerCase().contains(query))
+        .toList();
   }
 
-  static List<Recipe> _filterRecipesByIngredients(List<Recipe> recipes, String query) {
-    return recipes.where((recipe) => 
-      recipe.ingredients.any((ingredient) => 
-        ingredient.toLowerCase().contains(query)
-      )
-    ).toList();
+  static List<Recipe> _filterRecipesByIngredients(
+      List<Recipe> recipes, String query) {
+    return recipes
+        .where((recipe) => recipe.ingredients
+            .any((ingredient) => ingredient.toLowerCase().contains(query)))
+        .toList();
   }
 
   // Search recipes by tags
@@ -358,12 +383,12 @@ class FirebaseService {
     try {
       // Get all tags that match the query
       final allTags = await getAllTags();
-      final matchingTags = allTags.where((tag) => 
-        tag.name.toLowerCase().contains(query)
-      ).toList();
+      final matchingTags = allTags
+          .where((tag) => tag.name.toLowerCase().contains(query))
+          .toList();
 
       final Map<String, Recipe> recipes = {}; // Use Map to avoid duplicates
-      
+
       // For each matching tag, get all recipes with that tag
       for (final tag in matchingTags) {
         final tagRecipes = await getRecipesByTagName(tag.name);
@@ -385,7 +410,7 @@ class FirebaseService {
       if (tagNames.isEmpty) return [];
 
       final Map<String, Recipe> allMatchingRecipes = {};
-      
+
       for (final tagName in tagNames) {
         final recipes = await getRecipesByTagName(tagName);
         for (final recipe in recipes) {
@@ -404,18 +429,18 @@ class FirebaseService {
   static Future<List<String>> getPopularTags({int limit = 20}) async {
     try {
       // Get all recipe tags and count frequency
-      final recipeTagsSnapshot = await _firestore
-          .collection(_recipeTagsCollection)
-          .get();
+      final recipeTagsSnapshot =
+          await _firestore.collection(_recipeTagsCollection).get();
 
       final Map<String, int> tagFrequency = {};
-      
+
       for (final doc in recipeTagsSnapshot.docs) {
         final recipeTag = RecipeTag.fromJson(doc.data());
         final tagId = recipeTag.tagId;
-        
+
         // Get tag name
-        final tagDoc = await _firestore.collection(_tagsCollection).doc(tagId).get();
+        final tagDoc =
+            await _firestore.collection(_tagsCollection).doc(tagId).get();
         if (tagDoc.exists && tagDoc.data() != null) {
           final tag = Tag.fromJson({...tagDoc.data()!, 'id': tagDoc.id});
           tagFrequency[tag.name] = (tagFrequency[tag.name] ?? 0) + 1;
@@ -426,10 +451,7 @@ class FirebaseService {
       final sortedTags = tagFrequency.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
-      return sortedTags
-          .take(limit)
-          .map((entry) => entry.key)
-          .toList();
+      return sortedTags.take(limit).map((entry) => entry.key).toList();
     } catch (e) {
       print('Error getting popular tags: $e');
       return [];

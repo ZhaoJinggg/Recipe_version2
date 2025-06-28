@@ -95,7 +95,19 @@ class CustomBottomNavBar extends StatelessWidget {
       child: IconButton(
         icon: Icon(Icons.add, color: AppColors.textPrimary),
         onPressed: () {
-          Navigator.pushNamed(context, '/community');
+          // Check if user is logged in before allowing recipe upload
+          final user = UserSessionService.getCurrentUser();
+          if (user != null) {
+            Navigator.pushNamed(context, '/upload-recipe');
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please log in to upload recipes'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            Navigator.pushNamed(context, '/login');
+          }
         },
       ),
     );

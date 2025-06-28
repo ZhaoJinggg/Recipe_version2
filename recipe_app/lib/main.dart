@@ -13,6 +13,8 @@ import 'package:recipe_app/screens/signup_screen.dart';
 import 'package:recipe_app/screens/community_screen.dart';
 import 'package:recipe_app/screens/search_screen.dart';
 import 'package:recipe_app/screens/help_support_screen.dart';
+import 'package:recipe_app/screens/upload_recipe_screen.dart';
+import 'package:recipe_app/screens/my_recipes_screen.dart';
 import 'package:recipe_app/services/user_session_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -52,6 +54,8 @@ class MyApp extends StatelessWidget {
         '/community': (context) => const CommunityScreen(),
         '/search': (context) => const SearchScreen(),
         '/help_support': (context) => const HelpSupportScreen(),
+        '/upload-recipe': (context) => const UploadRecipeScreen(),
+        '/my-recipes': (context) => const MyRecipesScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/recipe') {

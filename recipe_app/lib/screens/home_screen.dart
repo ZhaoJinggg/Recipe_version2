@@ -85,8 +85,9 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       final allRecipes = await FirebaseService.getAllRecipes();
-      final inspirationRecipes = await FirebaseService.getDailyInspirationRecipes();
-      
+      final inspirationRecipes =
+          await FirebaseService.getDailyInspirationRecipes();
+
       setState(() {
         _allRecipes = allRecipes;
         _recipes = _allRecipes;
@@ -266,10 +267,12 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 20),
               _buildDrawerItem(Icons.person, 'Profile'),
               _buildDrawerItem(Icons.favorite, 'Favorites'),
+              _buildDrawerItem(Icons.restaurant_menu, 'My Recipes'),
               _buildDrawerItem(Icons.settings, 'Settings'),
               _buildDrawerItem(Icons.help_outline, 'Help & Support'),
               const Divider(),
-              _buildDrawerItem(Icons.tag, 'Add Tags to Recipes (Debug)', isDebug: true),
+              _buildDrawerItem(Icons.tag, 'Add Tags to Recipes (Debug)',
+                  isDebug: true),
               const Divider(),
               _buildDrawerItem(Icons.logout, 'Logout'),
             ],
@@ -570,6 +573,9 @@ class _HomeScreenState extends State<HomeScreen> {
           case 'Favorites':
             Navigator.pushNamed(context, '/favorites');
             break;
+          case 'My Recipes':
+            Navigator.pushNamed(context, '/my-recipes');
+            break;
           case 'Settings':
             Navigator.pushNamed(context, '/settings');
             break;
@@ -594,7 +600,8 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Add Tags to Recipes'),
-        content: const Text('This will add tags to all recipes that are missing them. Continue?'),
+        content: const Text(
+            'This will add tags to all recipes that are missing them. Continue?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -603,7 +610,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context); // Close dialog
-              
+
               // Show loading dialog
               showDialog(
                 context: context,
@@ -621,17 +628,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
               try {
                 // Run the tag migration
-                await DataMigrationService.runTagMigration();
-                
+                await DataMigrationService
+                    .migrateExistingRecipesToDynamicTagging();
+
                 if (mounted) {
                   Navigator.pop(context); // Close loading dialog
-                  
+
                   // Show success dialog
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Success!'),
-                      content: const Text('Tags have been added to your recipes. Check the console for details.'),
+                      content: const Text(
+                          'Tags have been added to your recipes. Check the console for details.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
@@ -644,7 +653,7 @@ class _HomeScreenState extends State<HomeScreen> {
               } catch (e) {
                 if (mounted) {
                   Navigator.pop(context); // Close loading dialog
-                  
+
                   // Show error dialog
                   showDialog(
                     context: context,
