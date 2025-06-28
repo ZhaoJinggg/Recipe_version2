@@ -425,59 +425,7 @@ class MockDataService {
     favoriteRecipes: ['1'],
   );
 
-  static final List<Post> _posts = [
-    Post(
-      id: 'post1',
-      userId: 'user1',
-      userName: 'Chef Teresa',
-      userProfileUrl: 'assets/images/profile1.jpg',
-      content:
-          'Just made this amazing pies with apple and honey! So delicious and easy to make.',
-      image: 'assets/images/apple_pie.png',
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      likes: 3,
-      likedBy: ['user2', 'user3', 'user4'], // Sample users who liked this post
-    ),
-    Post(
-      id: 'post2',
-      userId: 'user2',
-      userName: 'Chef Mike',
-      userProfileUrl: 'assets/images/profile4.jpg',
-      content:
-          'Experimenting with some new curry recipes today. What\'s your favorite curry dish?',
-      image: 'assets/images/greencurry.jpg',
-      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-      likes: 2,
-      likedBy: ['user1', 'user3'], // Sample users who liked this post
-      comments: [
-        PostComment(
-          id: 'comment1',
-          userId: 'user3',
-          userName: 'Chef Sophia',
-          content:
-              'Thai green curry is my favorite! Would love to see your take on it.',
-          createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-        ),
-      ],
-    ),
-    Post(
-      id: 'post3',
-      userId: 'user3',
-      userName: 'Chef Sophia',
-      userProfileUrl: 'assets/images/profile2.jpg',
-      content:
-          'Who else loves making desserts? Just finished this tiramisu for a family dinner tonight!',
-      image: 'assets/images/tiramisu.jpg',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      likes: 4,
-      likedBy: [
-        'user1',
-        'user2',
-        'user4',
-        'user5'
-      ], // Sample users who liked this post
-    ),
-  ];
+  static final List<Post> _posts = [];
 
   // Get all recipes
   static List<Recipe> getAllRecipes() {

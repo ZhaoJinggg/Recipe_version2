@@ -86,7 +86,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       });
     } catch (e) {
       setState(() {
-        _posts = MockDataService.getAllPosts();
+        _posts = [];
         _isLoading = false;
       });
     }
