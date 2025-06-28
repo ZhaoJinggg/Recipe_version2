@@ -123,6 +123,31 @@ class UserSessionService {
     }
   }
 
+  /// Change user password
+  static Future<bool> changePassword(String newPassword) async {
+    try {
+      if (_currentUser == null) {
+        print('❌ No current user to change password for');
+        return false;
+      }
+
+      print('🔐 Changing password for user: ${_currentUser!.name}');
+
+      // Change password in Firebase
+      final success = await FirebaseService.changePassword(newPassword);
+      if (!success) {
+        print('❌ Failed to change password in Firebase');
+        return false;
+      }
+
+      print('✅ Password changed successfully');
+      return true;
+    } catch (e) {
+      print('❌ Error changing password: $e');
+      return false;
+    }
+  }
+
   /// Load user session from Firebase Auth state
   static Future<bool> loadUserSession() async {
     final prefs = await SharedPreferences.getInstance();

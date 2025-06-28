@@ -1256,6 +1256,24 @@ class FirebaseService {
         email: email, password: password);
   }
 
+  /// Change user password
+  static Future<bool> changePassword(String newPassword) async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        print('❌ No authenticated user found');
+        return false;
+      }
+
+      await currentUser.updatePassword(newPassword);
+      print('✅ Password changed successfully');
+      return true;
+    } catch (e) {
+      print('❌ Error changing password: $e');
+      return false;
+    }
+  }
+
   /// Delete user account and all associated data
   static Future<bool> deleteUser(String userId) async {
     try {
