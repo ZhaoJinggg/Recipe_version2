@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:recipe_app/models/recipe.dart';
 import 'package:recipe_app/models/user.dart' as AppUser;
 import 'package:recipe_app/models/post.dart';
@@ -11,10 +12,12 @@ import 'package:recipe_app/models/tag.dart';
 import 'package:recipe_app/models/saved_recipe.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:recipe_app/services/recipe_tagging_service.dart';
+import 'dart:io';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Collection references
   static const String _usersCollection = 'users';
@@ -293,6 +296,47 @@ class FirebaseService {
     }
   }
 
+  // ==================== IMAGE UPLOAD METHODS ====================
+
+  // Upload image to Firebase Storage
+  static Future<String?> uploadImage(File imageFile, String folder) async {
+    try {
+      print('📤 Uploading image to Firebase Storage...');
+
+      // Generate unique filename with timestamp
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = '${folder}_${timestamp}.jpg';
+
+      // Create reference to storage location
+      final storageRef = _storage.ref().child('$folder/$fileName');
+
+      // Upload file
+      final uploadTask = storageRef.putFile(imageFile);
+
+      // Wait for upload to complete
+      final snapshot = await uploadTask;
+
+      // Get download URL
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      print('✅ Image uploaded successfully: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      print('❌ Error uploading image: $e');
+      return null;
+    }
+  }
+
+  // Upload post image
+  static Future<String?> uploadPostImage(File imageFile) async {
+    return await uploadImage(imageFile, 'posts');
+  }
+
+  // Upload profile image
+  static Future<String?> uploadProfileImage(File imageFile) async {
+    return await uploadImage(imageFile, 'profiles');
+  }
+
   // ==================== POST METHODS ====================
 
   // Create post
@@ -337,6 +381,32 @@ class FirebaseService {
       return docRef.id;
     } catch (e) {
       print('Error creating post: $e');
+      return null;
+    }
+  }
+
+  // Create post with image upload support
+  static Future<String?> createPostWithImage(Post post, File? imageFile) async {
+    try {
+      String? imageUrl;
+
+      // Upload image if provided
+      if (imageFile != null) {
+        print('📸 Uploading image for post...');
+        imageUrl = await uploadPostImage(imageFile);
+        if (imageUrl == null) {
+          print('❌ Failed to upload image for post');
+          return null;
+        }
+      }
+
+      // Create post with image URL
+      final postWithImage = post.copyWith(imageUrl: imageUrl);
+
+      // Use existing createPost method
+      return await createPost(postWithImage);
+    } catch (e) {
+      print('❌ Error creating post with image: $e');
       return null;
     }
   }
