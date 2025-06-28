@@ -281,13 +281,14 @@ class FirebaseService {
   static Future<List<Recipe>> searchRecipesAdvanced(String query) async {
     try {
       if (query.trim().isEmpty) return [];
-      
+
       final lowercaseQuery = query.toLowerCase();
-      final Map<String, Recipe> uniqueRecipes = {}; // Use Map to ensure uniqueness by ID
+      final Map<String, Recipe> uniqueRecipes =
+          {}; // Use Map to ensure uniqueness by ID
 
       // Get all recipes once and reuse for all searches (more efficient)
       final allRecipes = await getAllRecipes();
-      
+
       // 1. Search by recipe title
       final titleResults = _filterRecipesByTitle(allRecipes, lowercaseQuery);
       for (final recipe in titleResults) {
@@ -295,7 +296,8 @@ class FirebaseService {
       }
 
       // 2. Search by category
-      final categoryResults = _filterRecipesByCategory(allRecipes, lowercaseQuery);
+      final categoryResults =
+          _filterRecipesByCategory(allRecipes, lowercaseQuery);
       for (final recipe in categoryResults) {
         uniqueRecipes[recipe.id] = recipe;
       }
@@ -307,7 +309,8 @@ class FirebaseService {
       }
 
       // 4. Search by ingredients
-      final ingredientResults = _filterRecipesByIngredients(allRecipes, lowercaseQuery);
+      final ingredientResults =
+          _filterRecipesByIngredients(allRecipes, lowercaseQuery);
       for (final recipe in ingredientResults) {
         uniqueRecipes[recipe.id] = recipe;
       }
@@ -317,10 +320,10 @@ class FirebaseService {
       resultsList.sort((a, b) {
         final aInTitle = a.title.toLowerCase().contains(lowercaseQuery);
         final bInTitle = b.title.toLowerCase().contains(lowercaseQuery);
-        
+
         if (aInTitle && !bInTitle) return -1;
         if (!aInTitle && bInTitle) return 1;
-        
+
         // Secondary sort by rating
         return b.rating.compareTo(a.rating);
       });
@@ -333,24 +336,26 @@ class FirebaseService {
   }
 
   // Optimized filter methods that work on existing recipe list
-  static List<Recipe> _filterRecipesByTitle(List<Recipe> recipes, String query) {
-    return recipes.where((recipe) => 
-      recipe.title.toLowerCase().contains(query)
-    ).toList();
+  static List<Recipe> _filterRecipesByTitle(
+      List<Recipe> recipes, String query) {
+    return recipes
+        .where((recipe) => recipe.title.toLowerCase().contains(query))
+        .toList();
   }
 
-  static List<Recipe> _filterRecipesByCategory(List<Recipe> recipes, String query) {
-    return recipes.where((recipe) => 
-      recipe.category.toLowerCase().contains(query)
-    ).toList();
+  static List<Recipe> _filterRecipesByCategory(
+      List<Recipe> recipes, String query) {
+    return recipes
+        .where((recipe) => recipe.category.toLowerCase().contains(query))
+        .toList();
   }
 
-  static List<Recipe> _filterRecipesByIngredients(List<Recipe> recipes, String query) {
-    return recipes.where((recipe) => 
-      recipe.ingredients.any((ingredient) => 
-        ingredient.toLowerCase().contains(query)
-      )
-    ).toList();
+  static List<Recipe> _filterRecipesByIngredients(
+      List<Recipe> recipes, String query) {
+    return recipes
+        .where((recipe) => recipe.ingredients
+            .any((ingredient) => ingredient.toLowerCase().contains(query)))
+        .toList();
   }
 
   // Search recipes by tags
@@ -358,12 +363,12 @@ class FirebaseService {
     try {
       // Get all tags that match the query
       final allTags = await getAllTags();
-      final matchingTags = allTags.where((tag) => 
-        tag.name.toLowerCase().contains(query)
-      ).toList();
+      final matchingTags = allTags
+          .where((tag) => tag.name.toLowerCase().contains(query))
+          .toList();
 
       final Map<String, Recipe> recipes = {}; // Use Map to avoid duplicates
-      
+
       // For each matching tag, get all recipes with that tag
       for (final tag in matchingTags) {
         final tagRecipes = await getRecipesByTagName(tag.name);
@@ -385,7 +390,7 @@ class FirebaseService {
       if (tagNames.isEmpty) return [];
 
       final Map<String, Recipe> allMatchingRecipes = {};
-      
+
       for (final tagName in tagNames) {
         final recipes = await getRecipesByTagName(tagName);
         for (final recipe in recipes) {
@@ -404,18 +409,18 @@ class FirebaseService {
   static Future<List<String>> getPopularTags({int limit = 20}) async {
     try {
       // Get all recipe tags and count frequency
-      final recipeTagsSnapshot = await _firestore
-          .collection(_recipeTagsCollection)
-          .get();
+      final recipeTagsSnapshot =
+          await _firestore.collection(_recipeTagsCollection).get();
 
       final Map<String, int> tagFrequency = {};
-      
+
       for (final doc in recipeTagsSnapshot.docs) {
         final recipeTag = RecipeTag.fromJson(doc.data());
         final tagId = recipeTag.tagId;
-        
+
         // Get tag name
-        final tagDoc = await _firestore.collection(_tagsCollection).doc(tagId).get();
+        final tagDoc =
+            await _firestore.collection(_tagsCollection).doc(tagId).get();
         if (tagDoc.exists && tagDoc.data() != null) {
           final tag = Tag.fromJson({...tagDoc.data()!, 'id': tagDoc.id});
           tagFrequency[tag.name] = (tagFrequency[tag.name] ?? 0) + 1;
@@ -426,10 +431,7 @@ class FirebaseService {
       final sortedTags = tagFrequency.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
-      return sortedTags
-          .take(limit)
-          .map((entry) => entry.key)
-          .toList();
+      return sortedTags.take(limit).map((entry) => entry.key).toList();
     } catch (e) {
       print('Error getting popular tags: $e');
       return [];
@@ -1252,6 +1254,99 @@ class FirebaseService {
       String email, String password) async {
     return await _auth.createUserWithEmailAndPassword(
         email: email, password: password);
+  }
+
+  /// Delete user account and all associated data
+  static Future<bool> deleteUser(String userId) async {
+    try {
+      print('🗑️ Deleting user account and data: $userId');
+
+      // Get current user
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        print('❌ No authenticated user found');
+        return false;
+      }
+
+      // Delete user's saved recipes
+      final savedRecipesSnapshot = await _firestore
+          .collection(_savedRecipesCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch1 = _firestore.batch();
+      for (final doc in savedRecipesSnapshot.docs) {
+        batch1.delete(doc.reference);
+      }
+      await batch1.commit();
+      print('🗑️ Deleted ${savedRecipesSnapshot.docs.length} saved recipes');
+
+      // Delete user's grocery list items
+      final groceryItemsSnapshot = await _firestore
+          .collection(_groceryListCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch2 = _firestore.batch();
+      for (final doc in groceryItemsSnapshot.docs) {
+        batch2.delete(doc.reference);
+      }
+      await batch2.commit();
+      print('🗑️ Deleted ${groceryItemsSnapshot.docs.length} grocery items');
+
+      // Delete user's recipe ratings
+      final ratingsSnapshot = await _firestore
+          .collection(_recipeRatingsCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch3 = _firestore.batch();
+      for (final doc in ratingsSnapshot.docs) {
+        batch3.delete(doc.reference);
+      }
+      await batch3.commit();
+      print('🗑️ Deleted ${ratingsSnapshot.docs.length} recipe ratings');
+
+      // Delete user's comments
+      final commentsSnapshot = await _firestore
+          .collection(_commentsCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch4 = _firestore.batch();
+      for (final doc in commentsSnapshot.docs) {
+        batch4.delete(doc.reference);
+      }
+      await batch4.commit();
+      print('🗑️ Deleted ${commentsSnapshot.docs.length} comments');
+
+      // Delete user's posts
+      final postsSnapshot = await _firestore
+          .collection(_postsCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch5 = _firestore.batch();
+      for (final doc in postsSnapshot.docs) {
+        batch5.delete(doc.reference);
+      }
+      await batch5.commit();
+      print('🗑️ Deleted ${postsSnapshot.docs.length} posts');
+
+      // Delete user profile from Firestore
+      await _firestore.collection(_usersCollection).doc(userId).delete();
+      print('🗑️ Deleted user profile');
+
+      // Delete user from Firebase Auth
+      await currentUser.delete();
+      print('🗑️ Deleted user from Firebase Auth');
+
+      print('✅ User account and all data deleted successfully');
+      return true;
+    } catch (e) {
+      print('❌ Error deleting user account: $e');
+      return false;
+    }
   }
 
   static Stream<List<Recipe>> streamSavedRecipesForUser(String userId) async* {

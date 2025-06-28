@@ -94,6 +94,35 @@ class UserSessionService {
     print('👋 Simulated user logged out');
   }
 
+  /// Delete user account and all associated data
+  static Future<bool> deleteUserAccount() async {
+    try {
+      if (_currentUser == null) {
+        print('❌ No current user to delete');
+        return false;
+      }
+
+      print('🗑️ Deleting user account: ${_currentUser!.name}');
+
+      // Delete user from Firebase
+      final success = await FirebaseService.deleteUser(_currentUser!.id);
+      if (!success) {
+        print('❌ Failed to delete user from Firebase');
+        return false;
+      }
+
+      // Clear local session
+      _currentUser = null;
+      await _clearUserIdFromPrefs();
+
+      print('✅ User account deleted successfully');
+      return true;
+    } catch (e) {
+      print('❌ Error deleting user account: $e');
+      return false;
+    }
+  }
+
   /// Load user session from Firebase Auth state
   static Future<bool> loadUserSession() async {
     final prefs = await SharedPreferences.getInstance();
