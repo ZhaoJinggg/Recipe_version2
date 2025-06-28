@@ -15,6 +15,24 @@ class RecipeRating {
     DateTime? dateCreated,
   }) : dateCreated = dateCreated ?? DateTime.now();
 
+  RecipeRating copyWith({
+    String? id,
+    String? userId,
+    String? recipeId,
+    double? rating,
+    String? review,
+    DateTime? dateCreated,
+  }) {
+    return RecipeRating(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      recipeId: recipeId ?? this.recipeId,
+      rating: rating ?? this.rating,
+      review: review ?? this.review,
+      dateCreated: dateCreated ?? this.dateCreated,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

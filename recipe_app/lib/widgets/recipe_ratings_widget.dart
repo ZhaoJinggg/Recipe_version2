@@ -37,38 +37,24 @@ class _RecipeRatingsWidgetState extends State<RecipeRatingsWidget> {
     return widget.ratings.any((rating) => rating.userId == currentUser.id);
   }
 
-  RecipeRating? _getUserRating() {
-    final currentUser = UserSessionService.getCurrentUser();
-    if (currentUser == null) return null;
-    
-    try {
-      return widget.ratings.firstWhere((rating) => rating.userId == currentUser.id);
-    } catch (e) {
-      return null;
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Rating submission section
-        if (!_hasUserRated()) _buildRatingSubmissionSection(),
-        
-        // User's existing rating (if any)
-        if (_hasUserRated()) _buildUserRatingSection(),
-        
-        // Divider
-        if (widget.ratings.isNotEmpty) 
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16.0),
-            child: Divider(),
-          ),
-        
-        // All ratings list
-        _buildRatingsList(),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Rating submission section (only show if user hasn't rated)
+          if (!_hasUserRated()) _buildRatingSubmissionSection(),
+          
+          // Show some spacing if user hasn't rated yet
+          if (!_hasUserRated()) const SizedBox(height: 16),
+          
+          // All ratings list (includes user's rating if they rated)
+          _buildRatingsList(),
+        ],
+      ),
     );
   }
 
@@ -200,81 +186,14 @@ class _RecipeRatingsWidgetState extends State<RecipeRatingsWidget> {
     );
   }
 
-  Widget _buildUserRatingSection() {
-    final userRating = _getUserRating();
-    if (userRating == null) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Your rating: ',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              ...List.generate(5, (index) {
-                return Icon(
-                  Icons.star,
-                  size: 20,
-                  color: index < userRating.rating.floor()
-                      ? AppColors.primary
-                      : Colors.grey[300],
-                );
-              }),
-              const SizedBox(width: 8),
-              Text(
-                '${userRating.rating}/5',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          if (userRating.review != null && userRating.review!.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              userRating.review!,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-          const SizedBox(height: 8),
-          Text(
-            'Rated ${_getTimeAgo(userRating.dateCreated)}',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildRatingsList() {
-    final otherRatings = widget.ratings.where((rating) {
-      final currentUser = UserSessionService.getCurrentUser();
-      return currentUser == null || rating.userId != currentUser.id;
-    }).toList();
+    // Show ALL ratings, not just other users' ratings
+    final allRatings = widget.ratings.toList();
+    final currentUser = UserSessionService.getCurrentUser();
 
-    if (otherRatings.isEmpty) {
+    if (allRatings.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32.0),
         child: Text(
@@ -292,7 +211,7 @@ class _RecipeRatingsWidgetState extends State<RecipeRatingsWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'All Ratings (${otherRatings.length})',
+          'All Ratings (${allRatings.length})',
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -303,15 +222,22 @@ class _RecipeRatingsWidgetState extends State<RecipeRatingsWidget> {
         ListView.builder(
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
-          itemCount: otherRatings.length,
+          itemCount: allRatings.length,
           itemBuilder: (context, index) {
-            final rating = otherRatings[index];
+            final rating = allRatings[index];
+            final isCurrentUser = currentUser != null && rating.userId == currentUser.id;
+            
             return Container(
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isCurrentUser 
+                    ? AppColors.primary.withOpacity(0.1)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(12),
+                border: isCurrentUser 
+                    ? Border.all(color: AppColors.primary.withOpacity(0.3))
+                    : null,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey.withOpacity(0.1),
@@ -327,50 +253,74 @@ class _RecipeRatingsWidgetState extends State<RecipeRatingsWidget> {
                   Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: isCurrentUser 
+                            ? AppColors.primary
+                            : AppColors.primary.withOpacity(0.7),
                         radius: 16,
                         child: Text(
-                          'U', // Could be enhanced with actual user names
-                          style: const TextStyle(
+                          isCurrentUser ? 'You' : 'User',
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.bold,
+                            fontSize: isCurrentUser ? 10 : 12,
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              ...List.generate(5, (starIndex) {
-                                return Icon(
-                                  Icons.star,
-                                  size: 16,
-                                  color: starIndex < rating.rating.floor()
-                                      ? AppColors.primary
-                                      : Colors.grey[300],
-                                );
-                              }),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${rating.rating}/5',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                ...List.generate(5, (starIndex) {
+                                  return Icon(
+                                    Icons.star,
+                                    size: 18,
+                                    color: starIndex < rating.rating.floor()
+                                        ? AppColors.primary
+                                        : Colors.grey[300],
+                                  );
+                                }),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${rating.rating}/5',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            _getTimeAgo(rating.dateCreated),
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
+                                if (isCurrentUser) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Your Rating',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              _getTimeAgo(rating.dateCreated),
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -420,6 +370,7 @@ class _RecipeRatingsWidgetState extends State<RecipeRatingsWidget> {
           const SnackBar(
             content: Text('Rating submitted successfully!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
       }

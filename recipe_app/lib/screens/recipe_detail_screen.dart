@@ -215,11 +215,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
     try {
       final recipeRating = RecipeRating(
-        id: '',
+        id: '', // Firebase will generate this
         userId: currentUser.id,
         recipeId: widget.recipeId,
         rating: rating,
         review: review,
+        dateCreated: DateTime.now(),
       );
 
       final success = await FirebaseService.addOrUpdateRecipeRating(recipeRating);
@@ -229,11 +230,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         await _loadRatings();
         // Reload recipe to update average rating
         await _loadRecipe();
+        
+        _showSnackBar('Rating submitted successfully!', Icons.star, isSuccess: true);
       } else {
-        throw Exception('Failed to submit rating');
+        throw Exception('Failed to submit rating to database');
       }
     } catch (e) {
       print('❌ Error submitting rating: $e');
+      _showSnackBar('Failed to submit rating. Please try again.', Icons.error);
       rethrow; // Let the widget handle the error display
     }
   }
@@ -416,7 +420,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 }),
                 const SizedBox(width: 4),
                 Text(
-                  _recipe!.rating.toString(),
+                  _recipe!.rating.toStringAsFixed(1),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,

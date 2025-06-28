@@ -132,7 +132,7 @@ class RecipeCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            recipe.rating.toString(),
+                            recipe.rating.toStringAsFixed(1),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,

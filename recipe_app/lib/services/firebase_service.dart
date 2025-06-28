@@ -820,20 +820,24 @@ class FirebaseService {
 
       if (existingRating.docs.isNotEmpty) {
         // Update existing rating
-        await existingRating.docs.first.reference.update(rating.toJson());
+        final updatedRating = rating.copyWith(id: existingRating.docs.first.id);
+        await existingRating.docs.first.reference.update(updatedRating.toJson());
       } else {
         // Create new rating
         final docRef = await _firestore
             .collection(_recipeRatingsCollection)
             .add(rating.toJson());
+        
+        // Update with the generated document ID
         await docRef.update({'id': docRef.id});
       }
 
       // Update recipe's average rating
       await _updateRecipeAverageRating(rating.recipeId);
+      
       return true;
     } catch (e) {
-      print('Error adding/updating recipe rating: $e');
+      print('❌ Error adding/updating recipe rating: $e');
       return false;
     }
   }
@@ -844,14 +848,24 @@ class FirebaseService {
       final querySnapshot = await _firestore
           .collection(_recipeRatingsCollection)
           .where('recipeId', isEqualTo: recipeId)
-          .orderBy('dateCreated', descending: true)
           .get();
 
-      return querySnapshot.docs
-          .map((doc) => RecipeRating.fromJson(doc.data()))
-          .toList();
+      final ratings = <RecipeRating>[];
+      for (final doc in querySnapshot.docs) {
+        try {
+          final rating = RecipeRating.fromJson(doc.data());
+          ratings.add(rating);
+        } catch (e) {
+          print('❌ Error parsing rating document: $e');
+        }
+      }
+
+      // Sort by date (newest first)
+      ratings.sort((a, b) => b.dateCreated.compareTo(a.dateCreated));
+
+      return ratings;
     } catch (e) {
-      print('Error getting recipe ratings: $e');
+      print('❌ Error getting recipe ratings: $e');
       return [];
     }
   }
@@ -859,19 +873,28 @@ class FirebaseService {
   // Update recipe's average rating
   static Future<void> _updateRecipeAverageRating(String recipeId) async {
     try {
+      print('🔢 Calculating average rating for recipe: $recipeId');
       final ratings = await getRatingsForRecipe(recipeId);
+      
       if (ratings.isNotEmpty) {
-        final averageRating =
-            ratings.map((r) => r.rating).reduce((a, b) => a + b) /
-                ratings.length;
+        final totalRating = ratings.map((r) => r.rating).reduce((a, b) => a + b);
+        final averageRating = totalRating / ratings.length;
+        final roundedAverage = double.parse(averageRating.toStringAsFixed(1));
+        
+        print('📊 Found ${ratings.length} ratings with total: $totalRating');
+        print('📊 Calculated average: $averageRating → rounded to: $roundedAverage');
 
         await _firestore
             .collection(_recipesCollection)
             .doc(recipeId)
-            .update({'rating': averageRating});
+            .update({'rating': roundedAverage});
+            
+        print('✅ Updated recipe average rating to: $roundedAverage');
+      } else {
+        print('📊 No ratings found for recipe: $recipeId');
       }
     } catch (e) {
-      print('Error updating recipe average rating: $e');
+      print('❌ Error updating recipe average rating: $e');
     }
   }
 

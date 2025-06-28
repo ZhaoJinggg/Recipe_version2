@@ -249,17 +249,28 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Rating
+                  // Rating with text
                   Row(
-                    children: List.generate(5, (starIndex) {
-                      return Icon(
-                        Icons.star,
-                        color: starIndex < recipe.rating.floor()
-                            ? AppColors.primary
-                            : Colors.grey[300],
-                        size: 12,
-                      );
-                    }),
+                    children: [
+                      ...List.generate(5, (starIndex) {
+                        return Icon(
+                          Icons.star,
+                          color: starIndex < recipe.rating.floor()
+                              ? AppColors.primary
+                              : Colors.grey[300],
+                          size: 12,
+                        );
+                      }),
+                      const SizedBox(width: 4),
+                      Text(
+                        recipe.rating.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   // Title
