@@ -169,12 +169,6 @@ class _MyRecipesScreenState extends State<MyRecipesScreen> {
           ),
         ),
         actions: [
-          // Debug button
-          IconButton(
-            icon: const Icon(Icons.bug_report, color: Colors.orange),
-            onPressed: _createTestRecipe,
-            tooltip: 'Create Test Recipe',
-          ),
           IconButton(
             icon: const Icon(Icons.add, color: AppColors.primary),
             onPressed: () async {
@@ -526,74 +520,5 @@ class _MyRecipesScreenState extends State<MyRecipesScreen> {
         ],
       ),
     );
-  }
-
-  // Debug method to create a test recipe
-  Future<void> _createTestRecipe() async {
-    final user = UserSessionService.getCurrentUser();
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in first')),
-      );
-      return;
-    }
-
-    // COMPREHENSIVE DEBUG INFO
-    print('🔍 === DEBUG INFO ===');
-    print('👤 Current User ID: ${user.id}');
-    print('👤 Current User Name: ${user.name}');
-    print('👤 Current User Email: ${user.email}');
-
-    // Check all recipes and their author IDs
-    final allRecipes = await FirebaseService.getAllRecipes();
-    print('🌍 All recipes in database:');
-    for (final recipe in allRecipes) {
-      print(
-          '   - "${recipe.title}" by ${recipe.authorName} (authorId: "${recipe.authorId}")');
-      if (recipe.authorId == user.id) {
-        print('     ✅ This matches current user!');
-      }
-    }
-    print('🔍 === END DEBUG INFO ===');
-
-    try {
-      final testRecipe = Recipe(
-        id: FirebaseService.generateId(),
-        title: 'Test Recipe ${DateTime.now().millisecondsSinceEpoch}',
-        description: 'This is a test recipe for debugging',
-        category: 'Main Course',
-        image: 'assets/images/spaghetti_carbonara.png',
-        rating: 4.5,
-        prepTimeMinutes: 30,
-        servings: 4,
-        calories: 500,
-        ingredients: ['Test ingredient 1', 'Test ingredient 2'],
-        directions: ['Test step 1', 'Test step 2'],
-        nutritions: ['Test nutrition'],
-        authorId: user.id,
-        authorName: user.name,
-        difficultyLevel: 'Easy',
-        dateCreated: DateTime.now(),
-      );
-
-      print('🧪 Creating test recipe for user: ${user.id}');
-      final recipeId = await FirebaseService.createRecipe(testRecipe);
-
-      if (recipeId != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Test recipe created! Refreshing...')),
-        );
-        _loadMyRecipes(); // Refresh the list
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to create test recipe')),
-        );
-      }
-    } catch (e) {
-      print('❌ Error creating test recipe: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
   }
 }

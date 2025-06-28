@@ -34,7 +34,7 @@ class AuthDebugService {
       final loginSuccess =
           await UserSessionService.loginUser(testEmail, testPassword);
 
-      if (loginSuccess) {
+      if (loginSuccess['success'] == true) {
         print('✅ Test user login: SUCCESS');
         final currentUser = UserSessionService.getCurrentUser();
         print('   User: ${currentUser?.name} (${currentUser?.email})');
