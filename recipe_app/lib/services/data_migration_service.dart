@@ -682,4 +682,149 @@ class DataMigrationService {
     }
     print('✅ Re-imported all mock recipes to Firestore');
   }
+
+  /// Add tags to existing recipes that are missing them
+  /// This is a utility method that can be called anytime to fix missing tags
+  static Future<bool> addTagsToExistingRecipes() async {
+    try {
+      print('🔄 Starting to add tags to existing recipes...');
+
+      // Get all existing recipes
+      final existingRecipes = await FirebaseService.getAllRecipes();
+      
+      if (existingRecipes.isEmpty) {
+        print('ℹ️ No recipes found in database');
+        return true;
+      }
+
+      int recipesProcessed = 0;
+      int recipesWithTagsAdded = 0;
+
+      for (final recipe in existingRecipes) {
+        try {
+          // Check if recipe already has tags in the database
+          final existingTags = await FirebaseService.getTagNamesForRecipe(recipe.id);
+          
+          if (existingTags.isEmpty) {
+            print('🔄 Adding tags to recipe: ${recipe.title}');
+
+            // Apply dynamic tagging to recipes that don't have tags
+            final success = await RecipeTaggingService.applyTagsToRecipe(
+              recipeId: recipe.id,
+              category: recipe.category,
+              prepTimeMinutes: recipe.prepTimeMinutes,
+              difficultyLevel: recipe.difficultyLevel,
+              ingredients: recipe.ingredients,
+              title: recipe.title,
+              description: recipe.description,
+              additionalTags: recipe.tags, // Include any tags from the recipe object
+            );
+
+            if (success) {
+              recipesWithTagsAdded++;
+              print('✅ Added tags to recipe: ${recipe.title}');
+            } else {
+              print('❌ Failed to add tags to recipe: ${recipe.title}');
+            }
+          } else {
+            print('ℹ️ Recipe "${recipe.title}" already has ${existingTags.length} tags: ${existingTags.join(", ")}');
+          }
+
+          recipesProcessed++;
+        } catch (e) {
+          print('❌ Error processing recipe "${recipe.title}": $e');
+        }
+      }
+
+      print('🎉 Completed processing ${recipesProcessed} recipes');
+      print('✅ Added tags to ${recipesWithTagsAdded} recipes');
+      print('ℹ️ ${recipesProcessed - recipesWithTagsAdded} recipes already had tags');
+      
+      return true;
+    } catch (e) {
+      print('❌ Error adding tags to existing recipes: $e');
+      return false;
+    }
+  }
+
+  /// Check which recipes are missing tags (diagnostic method)
+  static Future<void> checkRecipesWithoutTags() async {
+    try {
+      print('🔍 Checking for recipes without tags...');
+
+      final existingRecipes = await FirebaseService.getAllRecipes();
+      final recipesWithoutTags = <Recipe>[];
+
+      for (final recipe in existingRecipes) {
+        final existingTags = await FirebaseService.getTagNamesForRecipe(recipe.id);
+        if (existingTags.isEmpty) {
+          recipesWithoutTags.add(recipe);
+        }
+      }
+
+      print('📊 Found ${recipesWithoutTags.length} recipes without tags:');
+      for (final recipe in recipesWithoutTags) {
+        print('   - ${recipe.title} (Category: ${recipe.category})');
+      }
+
+      if (recipesWithoutTags.isEmpty) {
+        print('🎉 All recipes have tags!');
+      } else {
+        print('💡 Run addTagsToExistingRecipes() to add tags to these recipes');
+      }
+    } catch (e) {
+      print('❌ Error checking recipes: $e');
+    }
+  }
+
+  /// Quick method to add tags to a specific recipe by ID
+  static Future<bool> addTagsToSpecificRecipe(String recipeId) async {
+    try {
+      print('🔄 Adding tags to recipe with ID: $recipeId');
+
+      final recipe = await FirebaseService.getRecipeById(recipeId);
+      if (recipe == null) {
+        print('❌ Recipe not found with ID: $recipeId');
+        return false;
+      }
+
+      final success = await RecipeTaggingService.applyTagsToRecipe(
+        recipeId: recipe.id,
+        category: recipe.category,
+        prepTimeMinutes: recipe.prepTimeMinutes,
+        difficultyLevel: recipe.difficultyLevel,
+        ingredients: recipe.ingredients,
+        title: recipe.title,
+        description: recipe.description,
+        additionalTags: recipe.tags,
+      );
+
+      if (success) {
+        final newTags = await FirebaseService.getTagNamesForRecipe(recipe.id);
+        print('✅ Successfully added tags to "${recipe.title}": ${newTags.join(", ")}');
+      }
+
+      return success;
+    } catch (e) {
+      print('❌ Error adding tags to recipe: $e');
+      return false;
+    }
+  }
+
+  /// Simple one-line method to run tag migration - call this to fix missing tags
+  static Future<void> runTagMigration() async {
+    print('🚀 Running tag migration for existing recipes...');
+    
+    // First check which recipes need tags
+    await checkRecipesWithoutTags();
+    
+    // Then add tags to recipes that need them
+    final success = await addTagsToExistingRecipes();
+    
+    if (success) {
+      print('🎉 Tag migration completed successfully!');
+    } else {
+      print('❌ Tag migration failed. Please check the logs.');
+    }
+  }
 }
