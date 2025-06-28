@@ -1276,6 +1276,117 @@ class FirebaseService {
         email: email, password: password);
   }
 
+  /// Change user password
+  static Future<bool> changePassword(String newPassword) async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        print('❌ No authenticated user found');
+        return false;
+      }
+
+      await currentUser.updatePassword(newPassword);
+      print('✅ Password changed successfully');
+      return true;
+    } catch (e) {
+      print('❌ Error changing password: $e');
+      return false;
+    }
+  }
+
+  /// Delete user account and all associated data
+  static Future<bool> deleteUser(String userId) async {
+    try {
+      print('🗑️ Deleting user account and data: $userId');
+
+      // Get current user
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        print('❌ No authenticated user found');
+        return false;
+      }
+
+      // Delete user's saved recipes
+      final savedRecipesSnapshot = await _firestore
+          .collection(_savedRecipesCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch1 = _firestore.batch();
+      for (final doc in savedRecipesSnapshot.docs) {
+        batch1.delete(doc.reference);
+      }
+      await batch1.commit();
+      print('🗑️ Deleted ${savedRecipesSnapshot.docs.length} saved recipes');
+
+      // Delete user's grocery list items
+      final groceryItemsSnapshot = await _firestore
+          .collection(_groceryListCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch2 = _firestore.batch();
+      for (final doc in groceryItemsSnapshot.docs) {
+        batch2.delete(doc.reference);
+      }
+      await batch2.commit();
+      print('🗑️ Deleted ${groceryItemsSnapshot.docs.length} grocery items');
+
+      // Delete user's recipe ratings
+      final ratingsSnapshot = await _firestore
+          .collection(_recipeRatingsCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch3 = _firestore.batch();
+      for (final doc in ratingsSnapshot.docs) {
+        batch3.delete(doc.reference);
+      }
+      await batch3.commit();
+      print('🗑️ Deleted ${ratingsSnapshot.docs.length} recipe ratings');
+
+      // Delete user's comments
+      final commentsSnapshot = await _firestore
+          .collection(_commentsCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch4 = _firestore.batch();
+      for (final doc in commentsSnapshot.docs) {
+        batch4.delete(doc.reference);
+      }
+      await batch4.commit();
+      print('🗑️ Deleted ${commentsSnapshot.docs.length} comments');
+
+      // Delete user's posts
+      final postsSnapshot = await _firestore
+          .collection(_postsCollection)
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch5 = _firestore.batch();
+      for (final doc in postsSnapshot.docs) {
+        batch5.delete(doc.reference);
+      }
+      await batch5.commit();
+      print('🗑️ Deleted ${postsSnapshot.docs.length} posts');
+
+      // Delete user profile from Firestore
+      await _firestore.collection(_usersCollection).doc(userId).delete();
+      print('🗑️ Deleted user profile');
+
+      // Delete user from Firebase Auth
+      await currentUser.delete();
+      print('🗑️ Deleted user from Firebase Auth');
+
+      print('✅ User account and all data deleted successfully');
+      return true;
+    } catch (e) {
+      print('❌ Error deleting user account: $e');
+      return false;
+    }
+  }
+
   static Stream<List<Recipe>> streamSavedRecipesForUser(String userId) async* {
     final savedRecipesStream = _firestore
         .collection(_savedRecipesCollection)
