@@ -5,12 +5,70 @@ import 'package:recipe_app/models/recipe.dart';
 class RecipeCard extends StatelessWidget {
   final Recipe recipe;
   final VoidCallback onTap;
+  final bool showTags;
 
   const RecipeCard({
     Key? key,
     required this.recipe,
     required this.onTap,
+    this.showTags = true,
   }) : super(key: key);
+
+  Widget _buildTagChip(String tag) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.3),
+          width: 0.5,
+        ),
+      ),
+      child: Text(
+        tag,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTagsSection() {
+    if (!showTags || recipe.tags.isEmpty) return const SizedBox.shrink();
+    
+    final displayTags = recipe.tags.take(3).toList();
+    final hasMoreTags = recipe.tags.length > 3;
+    
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        children: [
+          ...displayTags.map((tag) => _buildTagChip(tag)),
+          if (hasMoreTags)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.textPrimary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '+${recipe.tags.length - 3}',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary.withOpacity(0.7),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,6 +200,7 @@ class RecipeCard extends StatelessWidget {
                         color: AppColors.textPrimary.withOpacity(0.7),
                       ),
                     ),
+                    _buildTagsSection(),
                   ],
                 ),
               ),

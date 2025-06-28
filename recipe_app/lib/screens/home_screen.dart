@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/models/recipe.dart';
 import 'package:recipe_app/models/user.dart';
-import 'package:recipe_app/services/mock_data_service.dart';
+import 'package:recipe_app/services/firebase_service.dart';
 import 'package:recipe_app/services/user_session_service.dart';
 import 'package:recipe_app/widgets/category_selector.dart';
 import 'package:recipe_app/widgets/recipe_card.dart';
@@ -77,14 +77,29 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _loadRecipes() {
-    // In a real app, this would fetch from an API
-    setState(() {
-      _allRecipes = MockDataService.getAllRecipes().cast<Recipe>();
-      _recipes = _allRecipes;
-      _dailyInspirationRecipes =
-          MockDataService.getDailyInspirationRecipes().cast<Recipe>();
-    });
+  Future<void> _loadRecipes() async {
+    try {
+      setState(() {
+        // You can add a loading state here if needed
+      });
+
+      final allRecipes = await FirebaseService.getAllRecipes();
+      final inspirationRecipes = await FirebaseService.getDailyInspirationRecipes();
+      
+      setState(() {
+        _allRecipes = allRecipes;
+        _recipes = _allRecipes;
+        _dailyInspirationRecipes = inspirationRecipes;
+      });
+    } catch (e) {
+      print('Error loading recipes: $e');
+      // Fallback to empty lists or show error message
+      setState(() {
+        _allRecipes = [];
+        _recipes = [];
+        _dailyInspirationRecipes = [];
+      });
+    }
   }
 
   void _onCategorySelected(int index) {

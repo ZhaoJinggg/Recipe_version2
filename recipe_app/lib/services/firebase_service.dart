@@ -274,6 +274,171 @@ class FirebaseService {
     }
   }
 
+  // Enhanced search recipes with multiple criteria
+  static Future<List<Recipe>> searchRecipesAdvanced(String query) async {
+    try {
+      if (query.trim().isEmpty) return [];
+      
+      final lowercaseQuery = query.toLowerCase();
+      final Set<Recipe> uniqueRecipes = {};
+
+      // 1. Search by recipe title
+      final titleResults = await _searchRecipesByTitle(lowercaseQuery);
+      uniqueRecipes.addAll(titleResults);
+
+      // 2. Search by category
+      final categoryResults = await _searchRecipesByCategory(lowercaseQuery);
+      uniqueRecipes.addAll(categoryResults);
+
+      // 3. Search by tags
+      final tagResults = await _searchRecipesByTags(lowercaseQuery);
+      uniqueRecipes.addAll(tagResults);
+
+      // 4. Search by ingredients (search through all recipes and filter)
+      final ingredientResults = await _searchRecipesByIngredients(lowercaseQuery);
+      uniqueRecipes.addAll(ingredientResults);
+
+      // Convert to list and sort by relevance (title matches first, then others)
+      final resultsList = uniqueRecipes.toList();
+      resultsList.sort((a, b) {
+        final aInTitle = a.title.toLowerCase().contains(lowercaseQuery);
+        final bInTitle = b.title.toLowerCase().contains(lowercaseQuery);
+        
+        if (aInTitle && !bInTitle) return -1;
+        if (!aInTitle && bInTitle) return 1;
+        
+        // Secondary sort by rating
+        return b.rating.compareTo(a.rating);
+      });
+
+      return resultsList;
+    } catch (e) {
+      print('Error in advanced search: $e');
+      return [];
+    }
+  }
+
+  // Search recipes by title
+  static Future<List<Recipe>> _searchRecipesByTitle(String query) async {
+    try {
+      // Get all recipes and filter by title (since Firestore has limited text search)
+      final allRecipes = await getAllRecipes();
+      return allRecipes.where((recipe) => 
+        recipe.title.toLowerCase().contains(query)
+      ).toList();
+    } catch (e) {
+      print('Error searching by title: $e');
+      return [];
+    }
+  }
+
+  // Search recipes by category
+  static Future<List<Recipe>> _searchRecipesByCategory(String query) async {
+    try {
+      final allRecipes = await getAllRecipes();
+      return allRecipes.where((recipe) => 
+        recipe.category.toLowerCase().contains(query)
+      ).toList();
+    } catch (e) {
+      print('Error searching by category: $e');
+      return [];
+    }
+  }
+
+  // Search recipes by tags
+  static Future<List<Recipe>> _searchRecipesByTags(String query) async {
+    try {
+      // Get all tags that match the query
+      final allTags = await getAllTags();
+      final matchingTags = allTags.where((tag) => 
+        tag.name.toLowerCase().contains(query)
+      ).toList();
+
+      Set<Recipe> recipes = {};
+      
+      // For each matching tag, get all recipes with that tag
+      for (final tag in matchingTags) {
+        final tagRecipes = await getRecipesByTagName(tag.name);
+        recipes.addAll(tagRecipes);
+      }
+
+      return recipes.toList();
+    } catch (e) {
+      print('Error searching by tags: $e');
+      return [];
+    }
+  }
+
+  // Search recipes by ingredients
+  static Future<List<Recipe>> _searchRecipesByIngredients(String query) async {
+    try {
+      final allRecipes = await getAllRecipes();
+      return allRecipes.where((recipe) => 
+        recipe.ingredients.any((ingredient) => 
+          ingredient.toLowerCase().contains(query)
+        )
+      ).toList();
+    } catch (e) {
+      print('Error searching by ingredients: $e');
+      return [];
+    }
+  }
+
+  // Search recipes by multiple tags
+  static Future<List<Recipe>> searchRecipesByTags(List<String> tagNames) async {
+    try {
+      if (tagNames.isEmpty) return [];
+
+      Set<Recipe> allMatchingRecipes = {};
+      
+      for (final tagName in tagNames) {
+        final recipes = await getRecipesByTagName(tagName);
+        allMatchingRecipes.addAll(recipes);
+      }
+
+      return allMatchingRecipes.toList();
+    } catch (e) {
+      print('Error searching recipes by tags: $e');
+      return [];
+    }
+  }
+
+  // Get popular tags (most used tags)
+  static Future<List<String>> getPopularTags({int limit = 20}) async {
+    try {
+      // Get all recipe tags and count frequency
+      final recipeTagsSnapshot = await _firestore
+          .collection(_recipeTagsCollection)
+          .get();
+
+      final Map<String, int> tagFrequency = {};
+      
+      for (final doc in recipeTagsSnapshot.docs) {
+        final recipeTag = RecipeTag.fromJson(doc.data());
+        final tagId = recipeTag.tagId;
+        
+        // Get tag name
+        final tagDoc = await _firestore.collection(_tagsCollection).doc(tagId).get();
+        if (tagDoc.exists && tagDoc.data() != null) {
+          final tag = Tag.fromJson({...tagDoc.data()!, 'id': tagDoc.id});
+          tagFrequency[tag.name] = (tagFrequency[tag.name] ?? 0) + 1;
+        }
+      }
+
+      // Sort by frequency and return top tags
+      final sortedTags = tagFrequency.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      return sortedTags
+          .take(limit)
+          .map((entry) => entry.key)
+          .toList();
+    } catch (e) {
+      print('Error getting popular tags: $e');
+      return [];
+    }
+  }
+
   // Get daily inspiration recipes (featured recipes)
   static Future<List<Recipe>> getDailyInspirationRecipes() async {
     try {
