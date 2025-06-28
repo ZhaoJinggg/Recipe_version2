@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/constants.dart';
 import 'package:recipe_app/models/recipe.dart';
-import 'package:recipe_app/models/comment.dart';
+import 'package:recipe_app/models/recipe_rating.dart';
 import 'package:recipe_app/models/grocery_item.dart';
 import 'package:recipe_app/services/mock_data_service.dart';
 import 'package:recipe_app/services/firebase_service.dart';
@@ -9,7 +9,7 @@ import 'package:recipe_app/services/user_session_service.dart';
 import 'package:recipe_app/widgets/recipe_nutrition_widget.dart';
 import 'package:recipe_app/widgets/recipe_ingredients_widget.dart';
 import 'package:recipe_app/widgets/recipe_directions_widget.dart';
-import 'package:recipe_app/widgets/recipe_comments_widget.dart';
+import 'package:recipe_app/widgets/recipe_ratings_widget.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final String recipeId;
@@ -28,7 +28,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   bool _isFavorite = false;
   bool _isLoading = false;
   int _currentImageIndex = 0;
-  final TextEditingController _commentController = TextEditingController();
+  List<RecipeRating> _ratings = [];
 
   // Mock images for the swipeable gallery
   final List<String> _additionalImages = [
@@ -37,39 +37,31 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327',
   ];
 
-  final List<Comment> _comments = [
-    Comment(
-      id: 'comment1',
-      recipeId: '',
-      userId: 'user1',
-      username: 'Sarah',
-      content:
-          'I made this last night and it was delicious! Will definitely make again.',
-      datePosted: DateTime.now().subtract(const Duration(hours: 5)),
-      likes: 12,
-    ),
-    Comment(
-      id: 'comment2',
-      recipeId: '',
-      userId: 'user2',
-      username: 'Mike',
-      content:
-          'Great recipe! I added some extra garlic and it turned out amazing.',
-      datePosted: DateTime.now().subtract(const Duration(days: 2)),
-      likes: 8,
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
     _loadRecipe();
     _checkIfRecipeIsSaved();
+    _loadRatings();
   }
 
   Future<void> _loadRecipe() async {
     _recipe = await FirebaseService.getRecipeById(widget.recipeId);
     setState(() {});
+  }
+
+  Future<void> _loadRatings() async {
+    try {
+      final ratings = await FirebaseService.getRatingsForRecipe(widget.recipeId);
+      setState(() {
+        _ratings = ratings;
+      });
+    } catch (e) {
+      print('❌ Error loading ratings: $e');
+      setState(() {
+        _ratings = [];
+      });
+    }
   }
 
   Future<void> _checkIfRecipeIsSaved() async {
@@ -211,26 +203,38 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
   @override
   void dispose() {
-    _commentController.dispose();
     super.dispose();
   }
 
-  void _handleCommentSubmitted(String text) {
-    if (text.trim().isNotEmpty) {
-      setState(() {
-        _comments.insert(
-          0,
-          Comment(
-            id: 'comment_${DateTime.now().millisecondsSinceEpoch}',
-            recipeId: widget.recipeId,
-            userId: 'current_user',
-            username: 'You',
-            content: text.trim(),
-            datePosted: DateTime.now(),
-          ),
-        );
-      });
-      _commentController.clear();
+  Future<void> _handleRatingSubmitted(double rating, String? review) async {
+    final currentUser = UserSessionService.getCurrentUser();
+    if (currentUser == null) {
+      _showSnackBar('Please log in to rate recipes', Icons.error);
+      return;
+    }
+
+    try {
+      final recipeRating = RecipeRating(
+        id: '',
+        userId: currentUser.id,
+        recipeId: widget.recipeId,
+        rating: rating,
+        review: review,
+      );
+
+      final success = await FirebaseService.addOrUpdateRecipeRating(recipeRating);
+      
+      if (success) {
+        // Reload ratings to show the new rating
+        await _loadRatings();
+        // Reload recipe to update average rating
+        await _loadRecipe();
+      } else {
+        throw Exception('Failed to submit rating');
+      }
+    } catch (e) {
+      print('❌ Error submitting rating: $e');
+      rethrow; // Let the widget handle the error display
     }
   }
 
@@ -270,7 +274,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               ],
             ),
           ),
-          _buildCommentInput(),
         ],
       ),
     );
@@ -605,7 +608,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               Tab(text: 'Ingredients'),
               Tab(text: 'Directions'),
               Tab(text: 'Nutrition'),
-              Tab(text: 'Comments'),
+              Tab(text: 'Ratings'),
             ],
           ),
           const SizedBox(height: 16),
@@ -616,9 +619,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 RecipeIngredientsWidget(recipe: _recipe!),
                 RecipeDirectionsWidget(recipe: _recipe!),
                 RecipeNutritionWidget(recipe: _recipe!),
-                RecipeCommentsWidget(
-                  comments: _comments,
-                  onCommentSubmitted: _handleCommentSubmitted,
+                RecipeRatingsWidget(
+                  ratings: _ratings,
+                  onRatingSubmitted: _handleRatingSubmitted,
+                  recipeId: widget.recipeId,
                 ),
               ],
             ),
@@ -628,38 +632,5 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  Widget _buildCommentInput() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, -1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _commentController,
-              decoration: const InputDecoration(
-                hintText: 'Add a comment...',
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.send),
-            color: AppColors.primary,
-            onPressed: () => _handleCommentSubmitted(_commentController.text),
-          ),
-        ],
-      ),
-    );
-  }
+
 }

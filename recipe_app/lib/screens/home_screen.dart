@@ -4,7 +4,6 @@ import 'package:recipe_app/models/recipe.dart';
 import 'package:recipe_app/models/user.dart';
 import 'package:recipe_app/services/firebase_service.dart';
 import 'package:recipe_app/services/user_session_service.dart';
-import 'package:recipe_app/services/data_migration_service.dart';
 import 'package:recipe_app/widgets/category_selector.dart';
 import 'package:recipe_app/widgets/recipe_card.dart';
 import 'package:recipe_app/widgets/custom_bottom_nav_bar.dart';
@@ -270,9 +269,6 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildDrawerItem(Icons.restaurant_menu, 'My Recipes'),
               _buildDrawerItem(Icons.settings, 'Settings'),
               _buildDrawerItem(Icons.help_outline, 'Help & Support'),
-              const Divider(),
-              _buildDrawerItem(Icons.tag, 'Add Tags to Recipes (Debug)',
-                  isDebug: true),
               const Divider(),
               _buildDrawerItem(Icons.logout, 'Logout'),
             ],
@@ -582,9 +578,6 @@ class _HomeScreenState extends State<HomeScreen> {
           case 'Help & Support':
             Navigator.pushNamed(context, '/help_support');
             break;
-          case 'Add Tags to Recipes (Debug)':
-            _runTagMigration();
-            break;
           case 'Logout':
             _showLogoutDialog();
             break;
@@ -593,88 +586,5 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Temporary method to run tag migration
-  void _runTagMigration() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Tags to Recipes'),
-        content: const Text(
-            'This will add tags to all recipes that are missing them. Continue?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context); // Close dialog
 
-              // Show loading dialog
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const AlertDialog(
-                  content: Row(
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(width: 20),
-                      Text('Adding tags to recipes...'),
-                    ],
-                  ),
-                ),
-              );
-
-              try {
-                // Run the tag migration
-                await DataMigrationService
-                    .migrateExistingRecipesToDynamicTagging();
-
-                if (mounted) {
-                  Navigator.pop(context); // Close loading dialog
-
-                  // Show success dialog
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Success!'),
-                      content: const Text(
-                          'Tags have been added to your recipes. Check the console for details.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  Navigator.pop(context); // Close loading dialog
-
-                  // Show error dialog
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Error'),
-                      content: Text('Failed to add tags: $e'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Add Tags'),
-          ),
-        ],
-      ),
-    );
-  }
 }
