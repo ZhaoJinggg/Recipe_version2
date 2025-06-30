@@ -1009,25 +1009,19 @@ class _PostCard extends StatelessWidget {
   }
 
   Widget _buildImage() {
+    final imageUrl = post.image;
+    if (imageUrl == null) return SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: CachedNetworkImage(
-          imageUrl: post.image!,
+        child: Image.asset(
+          imageUrl,
           width: double.infinity,
           height: 250,
           fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            height: 250,
-            color: Colors.grey[200],
-            child: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-              ),
-            ),
-          ),
-          errorWidget: (context, url, error) => Container(
+          errorBuilder: (context, error, stackTrace) => Container(
             height: 250,
             color: Colors.grey[300],
             child: Column(
